@@ -3,10 +3,10 @@ from torch import nn
 from torch.nn import functional as F
 
 __all__ = [
+    'ContextNet',
     'contextnet12',
     'contextnet14',
     'contextnet18',
-    'ContextNet',
 ]
 
 
@@ -26,7 +26,6 @@ def contextnet18(in_channels, out_channels):
 
 
 class ContextNet(nn.Module):
-
     scale_factor: int = 4
 
     def __init__(self, in_channels, out_channels,
@@ -91,7 +90,8 @@ def Classifier(in_channels, out_channels):
     )
 
 
-def LinearBottleneck(in_channels, out_channels, num_blocks, expansion=6, stride=1):
+def LinearBottleneck(in_channels, out_channels, num_blocks,
+                     expansion=6, stride=1):
     layers = [
         BottleneckBlock(
             in_channels, out_channels,

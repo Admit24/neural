@@ -28,7 +28,7 @@ def create_segmentation_trainer(
     def update_fn(_trainer, batch):
         model.train()
         optimizer.zero_grad()
-        batch = batch['image'], batch['label']
+        # batch = batch['image'], batch['mask']
         x, y = _prepare_batch(batch, device=device, non_blocking=non_blocking)
 
         y_pred = model(x)
@@ -75,8 +75,8 @@ def create_segmentation_evaluator(
         metrics,
         device,
         non_blocking=non_blocking,
-        prepare_batch=lambda batch: _prepare_batch(
-            (batch['image'], batch['label']), device, non_blocking)
+        # prepare_batch=lambda batch: _prepare_batch(
+        #     (batch['image'], batch['mask']), device, non_blocking)
     )
 
     return evaluator
