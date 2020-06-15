@@ -8,8 +8,12 @@ from ignite.metrics.confusion_matrix import (
     DiceCoefficient,
     cmAccuracy,
 )
-
-from apex import amp
+try:
+    from apex import amp
+except:
+    from warnings import warn
+    warn("apex is not installed in your platform. "
+         "Half-precision training or Distributed training will not be possible.")
 
 __all__ = [
     'create_segmentation_trainer',
