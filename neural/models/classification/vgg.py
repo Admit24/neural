@@ -28,11 +28,11 @@ class Vgg(nn.Sequential):
     def __init__(self, in_channels, num_classes, block_depth):
 
         features = nn.Sequential(OrderedDict([
-            ('layer1', VggLayer(in_channels, 64, block_depth[0])),
-            ('layer2', VggLayer(64, 128, block_depth[1])),
-            ('layer3', VggLayer(128, 256, block_depth[2])),
-            ('layer4', VggLayer(256, 512, block_depth[3])),
-            ('layer5', VggLayer(512, 512, block_depth[4])),
+            ('layer1', make_layer(in_channels, 64, block_depth[0])),
+            ('layer2', make_layer(64, 128, block_depth[1])),
+            ('layer3', make_layer(128, 256, block_depth[2])),
+            ('layer4', make_layer(256, 512, block_depth[3])),
+            ('layer5', make_layer(512, 512, block_depth[4])),
         ]))
 
         classifier = nn.Sequential(
@@ -52,7 +52,7 @@ class Vgg(nn.Sequential):
         ]))
 
 
-def VggLayer(in_channels, out_channels, num_blocks):
+def make_layer(in_channels, out_channels, num_blocks):
     layers = []
     layers.append(ConvBlock(in_channels, out_channels))
     for _ in range(1, num_blocks):

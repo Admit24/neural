@@ -174,15 +174,17 @@ class BasicBlock(nn.Module):
                       stride=stride, use_relu=False)
         )
 
+        self.activation = nn.ReLU(inplace=True)
+
     def forward(self, input):
         x = self.conv1(input)
         x = self.conv2(x)
         if self.downsample is not None:
             input = self.downsample(input)
         if self.use_residual:
-            return F.relu(input + x)
+            return self.activation(input + x)
         else:
-            return F.relu(x)
+            return self.activation(x)
 
 
 class Bottleneck(nn.Module):
@@ -209,6 +211,8 @@ class Bottleneck(nn.Module):
             ConvBlock(in_channels, out_channels, 1,
                       stride=stride, use_relu=False))
 
+        self.activation = nn.ReLU(inplace=True)
+
     def forward(self, input):
         x = self.conv1(input)
         x = self.conv2(x)
@@ -216,9 +220,9 @@ class Bottleneck(nn.Module):
         if self.downsample is not None:
             input = self.downsample(input)
         if self.use_residual:
-            return F.relu(input + x)
+            return self.activation(input + x)
         else:
-            return F.relu(x)
+            return self.activation(x)
 
 
 def ConvBlock(in_channels, out_channels, kernel_size,

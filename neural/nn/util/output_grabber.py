@@ -14,8 +14,8 @@ class OutputGrabber(nn.Module):
         self.layers = layers
 
     def forward(self, input):
-        self.module(input)
-        return self.outputs
+        output = self.module(input)
+        return output, self.outputs
 
     def __enter__(self):
         if isinstance(self.layers, dict):

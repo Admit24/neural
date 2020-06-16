@@ -10,8 +10,7 @@ def alexnet(in_channels=3, num_classes=1000):
 
 class AlexNet(nn.Sequential):
 
-    def __init__(self, in_channels=3, num_classes=1000):
-
+    def __init__(self, in_channels: int = 3, num_classes: int = 1000):
         features = nn.Sequential(OrderedDict([
             ('layer1', nn.Sequential(OrderedDict([
                 ('conv', nn.Conv2d(in_channels, 64,

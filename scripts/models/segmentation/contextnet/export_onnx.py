@@ -22,11 +22,13 @@ parser.add_argument('--width', required=True, type=int,
 parser.add_argument('--height', required=True, type=int,
                     help=("the input height of the model."))
 parser.add_argument('--input_channels', required=False,
+                    type=int,
                     default=3,
                     help=("the number of input channels. "
                           "By default, for a rgb image this is 3."))
 parser.add_argument('--num_classes', required=False,
                     default=19,
+                    type=int,
                     help=("the number of output classes. "
                           "By default, this is 1000 to match the"
                           "imagenet dataset."))

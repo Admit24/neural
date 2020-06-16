@@ -1,7 +1,6 @@
 from collections import OrderedDict
 import torch
 from torch import nn
-from torch.nn import functional as F
 
 __all__ = [
     'SqueezeNet',
@@ -30,6 +29,7 @@ class SqueezeNet(nn.Sequential):
             ('layer2', nn.Sequential(
                 FireBlock(128, 256, (32, 128, 128)),
                 FireBlock(256, 256, (32, 128, 128)),
+                nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=True),
             )),
             ('layer3', nn.Sequential(
                 FireBlock(256, 384, (48, 192, 192)),
@@ -40,7 +40,7 @@ class SqueezeNet(nn.Sequential):
         ]))
 
         classifier = nn.Sequential(
-            nn.Dropout(),
+            nn.Dropout(p=0.5),
             nn.Conv2d(512, num_classes, 1),
             nn.ReLU(inplace=True),
             nn.AdaptiveAvgPool2d(1),

@@ -75,8 +75,6 @@ def create_segmentation_evaluator(
         metrics,
         device,
         non_blocking=non_blocking,
-        # prepare_batch=lambda batch: _prepare_batch(
-        #     (batch['image'], batch['mask']), device, non_blocking)
     )
 
     return evaluator

@@ -1,4 +1,3 @@
-import torch
 from torch import nn
 from torch.nn import functional as F
 
@@ -26,7 +25,6 @@ def contextnet18(in_channels, out_channels):
 
 
 class ContextNet(nn.Module):
-    scale_factor: int = 4
 
     def __init__(self, in_channels, out_channels,
                  scale_factor=4,
@@ -75,7 +73,7 @@ class ContextNet(nn.Module):
         classes = self.classifier(fusion)
 
         return F.interpolate(
-            classes, scale_factor=8,
+            classes, size=input.shape[2:],
             mode='bilinear', align_corners=True)
 
 
@@ -151,31 +149,25 @@ class BottleneckBlock(nn.Module):
         return F.relu(x)
 
 
-def DWConvBlock(in_channels, out_channels, kernel_size,
-                padding=0, stride=1, dilation=1,
-                use_relu=True):
-    if in_channels != out_channels:
-        raise ValueError(
-            "input and output channels must be the same in depthwise convolution")
-
-    layers = [
-        nn.Conv2d(in_channels, out_channels, kernel_size,
-                  padding=padding, stride=stride, dilation=dilation,
-                  groups=in_channels, bias=False),
-        nn.BatchNorm2d(out_channels),
-    ]
-    if use_relu:
-        layers += [nn.ReLU(inplace=True)]
-    return nn.Sequential(*layers)
-
-
-def ConvBlock(in_channels, out_channels, kernel_size, padding=0, stride=1, use_relu=True):
+def ConvBlock(in_channels, out_channels, kernel_size,
+              padding=0, stride=1,
+              groups=1,
+              use_relu=True):
     layers = [
         nn.Conv2d(in_channels, out_channels, kernel_size,
                   padding=padding, stride=stride,
+                  groups=groups,
                   bias=False),
         nn.BatchNorm2d(out_channels),
     ]
     if use_relu:
         layers += [nn.ReLU(inplace=True)]
     return nn.Sequential(*layers)
+
+
+def DWConvBlock(in_channels, out_channels, kernel_size,
+                padding=0, stride=1, dilation=1,
+                use_relu=True):
+    return ConvBlock(in_channels, out_channels, kernel_size,
+                     padding=padding, stride=stride, dilation=dilation,
+                     groups=in_channels, use_relu=use_relu)

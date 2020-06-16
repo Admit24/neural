@@ -15,16 +15,17 @@ from apex.parallel import (
 from ignite.engine import Events
 from ignite.handlers import ModelCheckpoint, global_step_from_engine
 from ignite.contrib.handlers import (
-    create_lr_scheduler_with_warmup, CosineAnnealingScheduler)
+    create_lr_scheduler_with_warmup, CosineAnnealingScheduler, LRScheduler)
 from ignite.contrib.handlers import ProgressBar
 
 import albumentations as albu
 from albumentations.pytorch import ToTensorV2 as ToTensor
 
-from neural.models.segmentation.contextnet import ContextNet
+from neural.models.segmentation.segnet import segnet
 from neural.engines.segmentation import (
     create_segmentation_trainer, create_segmentation_evaluator)
 from neural.data.cityscapes import Cityscapes
+from neural.nn.util import DeepSupervision
 
 from neural.losses import OHEMLoss
 
@@ -34,11 +35,11 @@ from neural.utils.training import (
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', type=int, required=True)
 parser.add_argument('--learning_rate', type=float, required=True)
-parser.add_argument('--weight_decay', type=float, default=1e-5)
+parser.add_argument('--weight_decay', type=float, default=1e-4)
 parser.add_argument('--epochs', type=int, required=True)
 parser.add_argument('--crop_size', type=int, default=768)
 parser.add_argument('--state_dict', type=str, required=False)
-parser.add_argument('--width_multiplier', type=int, default=1)
+parser.add_argument('--vgg_state_dict', type=str, required=False)
 
 parser.add_argument('--distributed', action='store_true')
 parser.add_argument('--local_rank', type=int, default=0)
@@ -91,26 +92,48 @@ val_loader = DataLoader(
     sampler=create_sampler(val_dataset, training=False, **sampler_args),
 )
 
-model = ContextNet(3, 19,
-                   scale_factor=4,
-                   width_multiplier=args.width_multiplier)
+model = segnet(3, 19)
+
+if args.vgg_state_dict is not None:
+    from neural.models.classification.vgg import vgg16
+    pretrained_model = vgg16(3, 1000)
+    state_dict = torch.load(args.vgg_state_dict, map_location='cpu')
+    pretrained_model.load_state_dict(state_dict)
+    model.encoder.load_state_dict(pretrained_model.features.state_dict())
 
 if args.state_dict is not None:
     state_dict = torch.load(args.state_dict, map_location='cpu')
-    model.load_state_dict(state_dict, strict=True)
+    model.load_state_dict(state_dict)
 
 
 model = model.to(device)
 
-optimizer = torch.optim.AdamW(
-    model.parameters(),
-    lr=args.learning_rate,
-    weight_decay=args.weight_decay,
+
+def parameters_of(module, type):
+    for m in module.modules():
+        if isinstance(m, type):
+            for p in m.parameters():
+                yield p
+
+
+optimizer = torch.optim.SGD([
+    # the encoder parameters
+    {'params': parameters_of(model.encoder, nn.Conv2d),
+     'lr': args.learning_rate / 10,
+     'weight_decay': args.weight_decay, },
+    # the batchnorm parameters do not have weight_decay
+    {'params': parameters_of(model.encoder, nn.BatchNorm2d),
+        'lr': args.learning_rate/10, },
+    # the decoder parameters
+    {'params': parameters_of(model.decoder, nn.Conv2d),
+     'lr': args.learning_rate,
+     'weight_decay': args.weight_decay, },
+    {'params': parameters_of(model.decoder, nn.BatchNorm2d),
+     'lr': args.learning_rate, }, ],
+    momentum=0.9,
 )
 
-loss_fn = OHEMLoss(ignore_index=255, numel_frac=0.05)
-loss_fn = loss_fn.cuda()
-
+loss_fn = OHEMLoss(ignore_index=255, numel_frac=0.05).cuda()
 
 scheduler = CosineAnnealingScheduler(
     optimizer, 'lr',
@@ -143,7 +166,7 @@ evaluator = create_segmentation_evaluator(
 
 if local_rank == 0:
     ProgressBar(persist=True).attach(trainer, ['loss'])
-    ProgressBar(persist=True).attach(evaluator, ['miou', 'accuracy'])
+    ProgressBar(persist=True).attach(evaluator)
 
 
 @trainer.on(Events.EPOCH_COMPLETED)
@@ -151,10 +174,19 @@ def evaluate(engine):
     evaluator.run(val_loader)
 
 
+@evaluator.on(Events.COMPLETED)
+def log_results(engine):
+    epoch = trainer.state.epoch
+    metrics = engine.state.metrics
+    miou, accuracy = metrics['miou'], metrics['accuracy']
+
+    print(f'Epoch [{epoch}]: miou={miou}, accuracy={accuracy}')
+
+
 if local_rank == 0:
     checkpointer = ModelCheckpoint(
-        dirname=os.path.join('checkpoints', 'weights'),
-        filename_prefix='contextnet',
+        dirname=os.path.join('segnet-weights'),
+        filename_prefix='segnet',
         score_name='miou',
         score_function=lambda engine: engine.state.metrics['miou'],
         n_saved=5,
@@ -162,7 +194,9 @@ if local_rank == 0:
     )
     evaluator.add_event_handler(
         Events.COMPLETED, checkpointer,
-        to_save={'model': model if not args.distributed else model.module},
+        to_save={
+            'model': model if not args.distributed else model.module,
+        },
     )
 
 trainer.run(train_loader, max_epochs=args.epochs)
