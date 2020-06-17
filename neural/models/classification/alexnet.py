@@ -23,7 +23,7 @@ def alexnet(in_channels=3, num_classes=1000, pretrained=None):
         else:
             raise ValueError('dataset not found')
     else:
-        return AlexNet(in_channels=in_channels, num_classes=1000)
+        return AlexNet(in_channels=in_channels, num_classes=num_classes)
 
 
 class AlexNet(nn.Sequential):
