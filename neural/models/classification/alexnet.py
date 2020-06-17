@@ -5,7 +5,7 @@ __all__ = ['AlexNet', 'alexnet']
 
 model_urls = {
     'alexnet': {
-        'imagenet': 'http://files.deeplar.tk/neural/weights/classification/alexnet/alexnet-imagenet-2db60a67.pth'
+        'imagenet': 'http://files.deeplar.tk/neural/models/weights/classification/alexnet/alexnet-imagenet-2db60a67.pth'
     },
 }
 
