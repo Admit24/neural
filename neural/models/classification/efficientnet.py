@@ -4,8 +4,14 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from neural.nn import Swish
+from neural.utils.hub import configure_model
 
 
+@configure_model({
+    'imagenet': {
+        'state_dict': 'http://files.deeplar.tk/neural/weights/efficientnet/efficientnet_b0-imagenet-e78091d2.pth',
+    }
+})
 def efficientnet_b0(in_channels, out_channels):
     return EfficientNet(in_channels, out_channels,
                         width_multiplier=1.0,
@@ -13,6 +19,11 @@ def efficientnet_b0(in_channels, out_channels):
                         dropout_rate=0.2)
 
 
+@configure_model({
+    'imagenet': {
+        'state_dict': 'http://files.deeplar.tk/neural/weights/efficientnet/efficientnet_b1-imagenet-28855b93.pth'
+    }
+})
 def efficientnet_b1(in_channels, out_channels):
     return EfficientNet(in_channels, out_channels,
                         width_multiplier=1.0,
@@ -20,6 +31,11 @@ def efficientnet_b1(in_channels, out_channels):
                         dropout_rate=0.2)
 
 
+@configure_model({
+    'imagenet': {
+        'state_dict': 'http://files.deeplar.tk/neural/weights/efficientnet/efficientnet_b2-imagenet-8bab1f6c.pth',
+    }
+})
 def efficientnet_b2(in_channels, out_channels):
     return EfficientNet(in_channels, out_channels,
                         width_multiplier=1.1,
@@ -27,6 +43,11 @@ def efficientnet_b2(in_channels, out_channels):
                         dropout_rate=0.3)
 
 
+@configure_model({
+    'imagenet': {
+        'state_dict': 'http://files.deeplar.tk/neural/weights/efficientnet/efficientnet_b3-imagenet-0b7b4186.pth',
+    }
+})
 def efficientnet_b3(in_channels, out_channels):
     return EfficientNet(in_channels, out_channels,
                         width_multiplier=1.2,
@@ -34,6 +55,11 @@ def efficientnet_b3(in_channels, out_channels):
                         dropout_rate=0.3)
 
 
+@configure_model({
+    'imagenet': {
+        'state_dict': 'http://files.deeplar.tk/neural/weights/efficientnet/efficientnet_b4-imagenet-79852444.pth',
+    }
+})
 def efficientnet_b4(in_channels, out_channels):
     return EfficientNet(in_channels, out_channels,
                         width_multiplier=1.4,
@@ -41,6 +67,11 @@ def efficientnet_b4(in_channels, out_channels):
                         dropout_rate=0.4)
 
 
+@configure_model({
+    'imagenet': {
+        'state_dict': 'http://files.deeplar.tk/neural/weights/efficientnet/efficientnet_b5-imagenet-4cca5e55.pth',
+    }
+})
 def efficientnet_b5(in_channels, out_channels):
     return EfficientNet(in_channels, out_channels,
                         width_multiplier=1.6,
@@ -48,6 +79,11 @@ def efficientnet_b5(in_channels, out_channels):
                         dropout_rate=0.4)
 
 
+@configure_model({
+    'imagenet': {
+        'state_dict': 'http://files.deeplar.tk/neural/weights/efficientnet/efficientnet_b6-imagenet-ba439be8.pth',
+    }
+})
 def efficientnet_b6(in_channels, out_channels):
     return EfficientNet(in_channels, out_channels,
                         width_multiplier=1.8,
@@ -55,6 +91,11 @@ def efficientnet_b6(in_channels, out_channels):
                         dropout_rate=0.5)
 
 
+@configure_model({
+    'imagenet': {
+        'state_dict': 'http://files.deeplar.tk/neural/weights/efficientnet/efficientnet_b7-imagenet-5218c83a.pth',
+    }
+})
 def efficientnet_b7(in_channels, out_channels):
     return EfficientNet(in_channels, out_channels,
                         width_multiplier=2.0,

@@ -4,11 +4,13 @@ import torch
 from torch import Tensor
 from torch import nn
 from torch.nn import functional as F
+from neural.utils.hub import configure_model
 
 __all__ = ['ENet', 'enet']
 
 
-def enet(in_channels, out_channels):
+@configure_model({})
+def enet(in_channels=3, out_channels=19):
     return ENet(in_channels, out_channels)
 
 
@@ -61,7 +63,7 @@ class ENet(nn.Module):
             RegularBlock(16, 16, dropout_p=0.1),
         ])
 
-        self.classifier = nn.Conv2d(16, out_channels, 1),
+        self.classifier = nn.Conv2d(16, out_channels, 1)
 
     def forward(self, input):
         x = self.head(input)
@@ -183,7 +185,8 @@ class DownsamplingBlock(nn.Module):
 
 class UpsamplingBlock(nn.Module):
 
-    def __init__(self, in_channels, out_channels, projection_ratio=4, dropout_p=0.1):
+    def __init__(self, in_channels, out_channels,
+                 projection_ratio=4, dropout_p=0.1):
         super().__init__()
 
         width = in_channels // projection_ratio
@@ -191,7 +194,8 @@ class UpsamplingBlock(nn.Module):
         self.conv1 = ConvBlock(in_channels, width, 1)
         self.conv2 = nn.Sequential(
             nn.ConvTranspose2d(width, width, 3,
-                               stride=2, padding=1, output_padding=1, bias=False),
+                               stride=2, padding=1,
+                               output_padding=1, bias=False),
             nn.BatchNorm2d(width),
             nn.PReLU(),
         )

@@ -1,67 +1,110 @@
 from collections import OrderedDict
 from functools import partial
 from torch import nn
-from torch.nn import functional as F
+
+from neural.utils.hub import configure_model
 
 
-def drn_a_18(in_channels, num_classes):
+@configure_model({})
+def drn_a_18(in_channels=3, num_classes=1000):
     return DRN(in_channels, num_classes, 'A', [2, 2, 2, 2], BasicBlock)
 
 
-def drn_a_34(in_channels, num_classes):
+@configure_model({})
+def drn_a_34(in_channels=3, num_classes=1000):
     return DRN(in_channels, num_classes, 'A', [3, 4, 6, 3], BasicBlock)
 
 
-def drn_a_50(in_channels, num_classes):
+@configure_model({})
+def drn_a_50(in_channels=3, num_classes=1000):
     return DRN(in_channels, num_classes, 'A', [3, 4, 6, 3],
                partial(Bottleneck, expansion=4), expansion=4)
 
 
-def drn_c_26(in_channels, num_classes):
+@configure_model({
+    'imagenet': {
+        'state_dict': 'http://files.deeplar.tk/neural/weights/drn/drn_c_26-imagenet-94125eb6.pth',
+    }
+})
+def drn_c_26(in_channels=3, num_classes=1000):
     return DRN(in_channels, num_classes, 'C', [2, 2, 2, 2, 1, 1], BasicBlock)
 
 
-def drn_c_42(in_channels, num_classes):
+@configure_model({
+    'imagenet': {
+        'state_dict': 'http://files.deeplar.tk/neural/weights/drn/drn_c_42-imagenet-bb016ae1.pth',
+    }
+})
+def drn_c_42(in_channels=3, num_classes=1000):
     return DRN(in_channels, num_classes, 'C', [3, 4, 6, 3, 1, 1], BasicBlock)
 
 
-def drn_c_58(in_channels, num_classes):
+@configure_model({
+    'imagenet': {
+        'state_dict': 'http://files.deeplar.tk/neural/weights/drn/drn_c_58-imagenet-150cc3f6.pth',
+    }
+})
+def drn_c_58(in_channels=3, num_classes=1000):
     return DRN(in_channels, num_classes, 'C', [3, 4, 6, 3, 1, 1],
                partial(Bottleneck, expansion=4), expansion=4)
 
 
-def drn_d_22(in_channels, num_classes):
+@configure_model({
+    'imagenet': {
+        'state_dict': 'http://files.deeplar.tk/neural/weights/drn/drn_d_22-imagenet-87afb51d.pth',
+    }
+})
+def drn_d_22(in_channels=3, num_classes=1000):
     return DRN(in_channels, num_classes, 'D', [2, 2, 2, 2, 1, 1], BasicBlock)
 
 
-def drn_d_24(in_channels, num_classes):
+@configure_model({})
+def drn_d_24(in_channels=3, num_classes=1000):
     return DRN(in_channels, num_classes, 'D', [2, 2, 2, 2, 2, 2], BasicBlock)
 
 
-def drn_d_38(in_channels, num_classes):
+@configure_model({
+    'imagenet': {
+        'state_dict': 'http://files.deeplar.tk/neural/weights/drn/drn_d_38-imagenet-bfdcd45f.pth',
+    }
+})
+def drn_d_38(in_channels=3, num_classes=1000):
     return DRN(in_channels, num_classes, 'D', [3, 4, 6, 3, 1, 1], BasicBlock)
 
 
-def drn_d_40(in_channels, num_classes):
+@configure_model({})
+def drn_d_40(in_channels=3, num_classes=1000):
     return DRN(in_channels, num_classes, 'D', [3, 4, 6, 3, 2, 2], BasicBlock)
 
 
-def drn_d_54(in_channels, num_classes):
+@configure_model({
+    'imagenet': {
+        'state_dict': 'http://files.deeplar.tk/neural/weights/drn/drn_d_54-imagenet-5672b1dd.pth',
+    }
+})
+def drn_d_54(in_channels=3, num_classes=1000):
     return DRN(in_channels, num_classes, 'D', [3, 4, 6, 3, 1, 1],
                partial(Bottleneck, expansion=4), expansion=4)
 
 
-def drn_d_56(in_channels, num_classes):
+@configure_model({})
+def drn_d_56(in_channels=3, num_classes=1000):
     return DRN(in_channels, num_classes, 'D', [3, 4, 6, 3, 2, 2],
                partial(Bottleneck, expansion=4), expansion=4)
 
 
-def drn_d_105(in_channels, num_classes):
+@configure_model({
+    'imagenet': {
+        'state_dict': 'http://files.deeplar.tk/neural/weights/drn/drn_d_105-imagenet-72999aa2.pth',
+    }
+})
+def drn_d_105(in_channels=3, num_classes=1000):
     return DRN(in_channels, num_classes, 'D', [3, 4, 23, 3, 1, 1],
                partial(Bottleneck, expansion=4), expansion=4)
 
 
-def drn_d_107(in_channels, num_classes):
+@configure_model({})
+def drn_d_107(in_channels=3, num_classes=1000):
     return DRN(in_channels, num_classes, 'D', [3, 4, 23, 3, 2, 2],
                partial(Bottleneck, expansion=4), expansion=4)
 

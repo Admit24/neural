@@ -1,5 +1,6 @@
 from torch import nn
 from torch.nn import functional as F
+from neural.utils.hub import configure_model
 
 __all__ = [
     'ContextNet',
@@ -9,17 +10,44 @@ __all__ = [
 ]
 
 
-def contextnet12(in_channels, out_channels):
+@configure_model({})
+def contextnet12(in_channels=3, out_channels=19):
     return ContextNet(in_channels, out_channels,
                       scale_factor=2)
 
 
-def contextnet14(in_channels, out_channels):
+@configure_model({
+    'cityscapes': {
+        'in_channels': 3, 'out_channels': 19,
+        'state_dict': 'http://files.deeplar.tk/neural/weights/contextnet/contextnet14-cityscapes-951f4835.pth',
+    },
+    'cityscapes-simple': {
+        'in_channels': 3, 'out_channels': 19,
+        'state_dict': 'http://files.deeplar.tk/neural/weights/contextnet/contextnet14-cityscapes-9cc70c56.pth',
+    },
+    'cityscapes-knowledge-destilation': {
+        'in_channels': 3, 'out_channels': 19,
+        'state_dict': 'http://files.deeplar.tk/neural/weights/contextnet/contextnet14-cityscapes-951f4835.pth',
+    },
+    'cityscapes-2x': {
+        'in_channels': 3, 'out_channels': 19,
+        'width_multiplier': 2,
+        'state_dict': 'http://files.deeplar.tk/neural/weights/contextnet/contextnet14_2x-cityscapes-073a0b7d.pth',
+    },
+    'dbb100k-2x': {
+        'in_channels': 3, 'out_channels': 19,
+        'width_multiplier': 2,
+        'state_dict': 'http://files.deeplar.tk/neural/weights/contextnet/contextnet14_2x-bdd100k-586cfea9.pth',
+    }
+})
+def contextnet14(in_channels=3, out_channels=19, width_multiplier=1):
     return ContextNet(in_channels, out_channels,
-                      scale_factor=4)
+                      scale_factor=4,
+                      width_multiplier=width_multiplier)
 
 
-def contextnet18(in_channels, out_channels):
+@configure_model({})
+def contextnet18(in_channels=3, out_channels=19):
     return ContextNet(in_channels, out_channels,
                       scale_factor=8)
 

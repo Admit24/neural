@@ -1,29 +1,19 @@
 from collections import OrderedDict
 from torch import nn
 
+from neural.utils.hub import configure_model
+
+
 __all__ = ['AlexNet', 'alexnet']
 
-model_urls = {
-    'alexnet': {
-        'imagenet': 'http://files.deeplar.tk/neural/models/weights/classification/alexnet/alexnet-imagenet-2db60a67.pth'
-    },
-}
 
-
-def alexnet(in_channels=3, num_classes=1000, pretrained=None):
-    if pretrained:
-        from torch.hub import load_state_dict_from_url
-        if pretrained == 'imagenet':
-            model = AlexNet(in_channels=3, num_classes=1000)
-            state_dict = load_state_dict_from_url(
-                model_urls['alexnet']['imagenet'],
-                check_hash=True)
-            model.load_state_dict(state_dict)
-            return model
-        else:
-            raise ValueError('dataset not found')
-    else:
-        return AlexNet(in_channels=in_channels, num_classes=num_classes)
+@configure_model({
+    'imagenet': {
+        'state_dict': 'http://files.deeplar.tk/neural/weights/alexnet/alexnet-imagenet-2db60a67.pth',
+    }
+})
+def alexnet(in_channels=3, num_classes=1000):
+    return AlexNet(in_channels=in_channels, num_classes=num_classes)
 
 
 class AlexNet(nn.Sequential):

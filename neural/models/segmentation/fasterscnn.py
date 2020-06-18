@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 from torch.nn import functional as F
+from neural.utils.hub import configure_model
 
 __all__ = [
     'FastSCNN',
@@ -8,6 +9,12 @@ __all__ = [
 ]
 
 
+@configure_model({
+    'cityscapes': {
+        'in_channels': 3, 'out_channels': 19,
+        'state_dict': 'http://files.deeplar.tk/neural/weights/fastscnn/fastscnn-cityscapes-705f0768.pth',
+    }
+})
 def fastscnn(in_channels, out_channels):
     return FastSCNN(in_channels, out_channels)
 

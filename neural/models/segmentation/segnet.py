@@ -1,9 +1,16 @@
 from collections import OrderedDict
 from torch import nn
 from torch.nn import functional as F
+from neural.utils.hub import configure_model
 
 
-def segnet(in_channels, out_channels):
+@configure_model({
+    'cityscapes': {
+        'in_channels': 3, 'out_channels': 19,
+        'state_dict': 'http://files.deeplar.tk/neural/weights/segnet/segnet-cityscapes-ae73a541.pth',
+    }
+})
+def segnet(in_channels=3, out_channels=19):
     return SegNet(in_channels, out_channels)
 
 
