@@ -179,12 +179,12 @@ class BottleneckBlock(nn.Module):
 
 def ConvBlock(in_channels, out_channels, kernel_size,
               padding=0, stride=1,
-              groups=1,
+              groups=1, dilation=1,
               use_relu=True):
     layers = [
         nn.Conv2d(in_channels, out_channels, kernel_size,
                   padding=padding, stride=stride,
-                  groups=groups,
+                  groups=groups, dilation=dilation,
                   bias=False),
         nn.BatchNorm2d(out_channels),
     ]
