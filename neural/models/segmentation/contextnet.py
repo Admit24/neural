@@ -93,7 +93,7 @@ class ContextNet(nn.Module):
 
         context = F.interpolate(
             input, scale_factor=1 / self.scale_factor,
-            mode='bilinear')
+            mode='nearest')
         context = self.context(context)
 
         fusion = self.feature_fusion(context, spatial)
@@ -102,7 +102,7 @@ class ContextNet(nn.Module):
 
         return F.interpolate(
             classes, size=input.shape[2:],
-            mode='bilinear')
+            mode='nearest')
 
 
 def Classifier(in_channels, out_channels):
@@ -148,7 +148,7 @@ class FeatureFusionModule(nn.Module):
     def forward(self, lowres, highres):
         lowres = F.interpolate(
             lowres, size=highres.shape[2:],
-            mode='bilinear')
+            mode='nearest')
         lowres = self.lowres(lowres)
 
         highres = self.highres(highres)
