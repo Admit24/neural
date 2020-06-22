@@ -14,10 +14,10 @@ class BDDSegmentation(Dataset):
     ])
 
     def __init__(self, root_dir, split='train', transforms=None):
-        images_dir = join(root_dir. 'images', split)
+        images_dir = join(root_dir, 'images', split)
         labels_dir = join(root_dir, 'labels', split)
 
-        def generate_examples(self, images_dir, labels_dir):
+        def generate_examples(images_dir, labels_dir):
             images = listdir(images_dir)
             images = [join(images_dir, image) for image in images]
             images = sorted(images)
@@ -40,14 +40,15 @@ class BDDSegmentation(Dataset):
         o = self.examples[index]
 
         image = o['image']
-        labels = o['label']
+        label = o['label']
 
         image = cv2.imread(image, cv2.IMREAD_COLOR)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         label = cv2.imread(label, cv2.IMREAD_GRAYSCALE)
 
-        return self.transform(image=image, label=label)
+        out = self.transforms(image=image, mask=label)
+        return out['image'], out['mask'].long()
 
     def __len__(self):
         return len(self.examples)

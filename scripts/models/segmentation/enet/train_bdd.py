@@ -22,7 +22,7 @@ from albumentations.pytorch import ToTensorV2 as ToTensor
 from neural.models.segmentation.enet import enet
 from neural.engines.segmentation import (
     create_segmentation_trainer, create_segmentation_evaluator)
-from neural.data.cityscapes import Cityscapes
+from neural.data.bdd import BDDSegmentation
 
 from neural.losses import OHEMLoss
 
@@ -68,9 +68,9 @@ val_tfms = albu.Compose([
 ])
 
 
-dataset_dir = get_datasets_root('cityscapes')
-train_dataset = Cityscapes(dataset_dir, split='train', transforms=train_tfms)
-val_dataset = Cityscapes(dataset_dir, split='val', transforms=val_tfms)
+dataset_dir = get_datasets_root('bdd100k/seg')
+train_dataset = BDDSegmentation(dataset_dir, split='train', transforms=train_tfms)
+val_dataset = BDDSegmentation(dataset_dir, split='val', transforms=val_tfms)
 
 
 sampler_args = dict(world_size=world_size,
@@ -98,29 +98,20 @@ model = enet(3, 19)
 
 if args.state_dict is not None:
     state_dict = torch.load(args.state_dict, map_location='cpu')
-    model.load_state_dict(state_dict, strict=True)
+    del state_dict['classifier.weight']
+    del state_dict['classifier.bias']
+    model.load_state_dict(state_dict, strict=False)
 
 model = model.to(device)
 
 
-def parameters_of(module, type):
-    for m in module.modules():
-        if isinstance(m, type):
-            for p in m.parameters():
-                yield p
-
-
 optimizer = torch.optim.SGD(
-    [
-        {'params': parameters_of(model, (nn.Conv2d, nn.ConvTranspose2d, nn.PReLU)),
-         'weight_decay': args.weight_decay, },
-        {'params': parameters_of(model, nn.BatchNorm2d), }
-    ],
+    model.parameters(),
     lr=args.learning_rate,
     weight_decay=args.weight_decay,
     momentum=0.9,
+    nesterov=True,
 )
-
 
 loss_fn = OHEMLoss(ignore_index=255, numel_frac=0.05)
 loss_fn = loss_fn.cuda()
@@ -129,8 +120,7 @@ loss_fn = loss_fn.cuda()
 scheduler = CosineAnnealingScheduler(
     optimizer, 'lr',
     args.learning_rate, 1e-6,
-    cycle_size=args.epochs * len(train_loader) // args.cycles,
-    cycle_mult=args.cycle_mult
+    cycle_size=args.epochs * len(train_loader),
 )
 scheduler = create_lr_scheduler_with_warmup(
     scheduler, 0, args.learning_rate, 1000)
@@ -178,7 +168,7 @@ if local_rank == 0:
 
 if local_rank == 0:
     checkpointer = ModelCheckpoint(
-        dirname=os.path.join('checkpoints', 'enet-weights'),
+        dirname=os.path.join('checkpoints', 'enet-weights-bdd'),
         filename_prefix='enet',
         score_name='miou',
         score_function=lambda engine: engine.state.metrics['miou'],
