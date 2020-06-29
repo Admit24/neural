@@ -56,7 +56,7 @@ class MobileNetV3Large(nn.Sequential):
             nn.Flatten(),
             nn.Linear(c(960), c(1280)),
             HardSwish(inplace=True),
-            nn.Dropout(0.8),
+            nn.Dropout(p=0.2),
             nn.Linear(c(1280), num_classes),
         )
 
@@ -103,7 +103,7 @@ class MobileNetV3Small(nn.Sequential):
             nn.Flatten(),
             nn.Linear(c(576), c(1024)),
             HardSwish(inplace=True),
-            nn.Dropout(0.8),
+            nn.Dropout(p=0.2),
             nn.Linear(c(1024), num_classes),
         )
 
@@ -142,7 +142,7 @@ class InvertedResidualBlock(nn.Module):
     def forward(self, input):
         x = self.expansion(input) if self.expansion is not None else input
         x = self.conv(x)
-        x = self.se(x) if self.se is not None else x
+        x = self.se(x)
         x = self.reduction(x)
         if input.shape == x.shape:
             x = x + input
@@ -168,13 +168,16 @@ class SEBlock(nn.Module):
 
 
 def ConvBlock(in_channels, out_channels, kernel_size,
-              padding=0, stride=1, groups=1, activation=nn.ReLU):
+              padding=0, stride=1, groups=1,
+              activation=nn.ReLU, se_block=None):
     layers = [
         nn.Conv2d(in_channels, out_channels, kernel_size,
                   padding=padding, stride=stride,
                   groups=groups, bias=False),
         nn.BatchNorm2d(out_channels),
     ]
+    if se_block is not None:
+        layers += [se_block]
     if activation is not None:
         layers += [activation(inplace=True)]
     return nn.Sequential(*layers)

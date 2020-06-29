@@ -11,7 +11,7 @@ def mish(input, inplace=False):
 
 
 def hard_swish(input, inplace=False):
-    return input * F.relu6(input + 3.).div(6.)
+    return input * hard_sigmoid(input)
 
 
 def hard_sigmoid(input, inplace=False):

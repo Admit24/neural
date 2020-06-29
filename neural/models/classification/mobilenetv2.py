@@ -1,30 +1,48 @@
 from collections import OrderedDict
-
 from torch import nn
+from neural.utils.hub import configure_model
 
 __all__ = [
     'MobileNetV2',
-    'mobilenetv2', 'mobilenetv2_0_5x', 'mobilenetv2_2x',
+    'mobilenetv2',
 ]
 
 
-def mobilenetv2(in_channels, num_classes):
-    return MobileNetV2(in_channels, num_classes)
-
-
-def mobilenetv2_0_5x(in_channels, num_classes):
-    return MobileNetV2(in_channels, num_classes, width_multiplier=0.5)
-
-
-def mobilenetv2_2x(in_channels, num_classes):
-    return MobileNetV2(in_channels, num_classes, width_multiplier=2.0)
+@configure_model({
+    'imagenet': {
+        'state_dict': 'http://files.deeplar.tk/neural/weights/mobilenetv2/mobilenetv2_1_0-8b85393a.pth',
+    },
+    'imagenet-1.0': {
+        'width_multiplier': 1,
+        'state_dict': 'http://files.deeplar.tk/neural/weights/mobilenetv2/mobilenetv2_1_0-8b85393a.pth',
+    },
+    'imagenet-0.75': {
+        'width_multiplier': 0.75,
+        'state_dict': 'http://files.deeplar.tk/neural/weights/mobilenetv2/mobilenetv2_0_75-b955620c.pth',
+    },
+    'imagenet-0.5': {
+        'width_multiplier': 0.5,
+        'state_dict': 'http://files.deeplar.tk/neural/weights/mobilenetv2/mobilenetv2_0_5-bd1d2a68.pth',
+    },
+    'imagenet-0.35': {
+        'width_multiplier': 0.35,
+        'state_dict': 'http://files.deeplar.tk/neural/weights/mobilenetv2/mobilenetv2_0.35-cc0f5647.pth',
+    },
+    'imagenet-0.25': {
+        'width_multiplier': 0.25,
+        'state_dict': 'http://files.deeplar.tk/neural/weights/mobilenetv2/mobilenetv2_0.25-e542a5f2.pth',
+    },
+})
+def mobilenetv2(in_channels=3, num_classes=1000, width_multiplier=1):
+    return MobileNetV2(in_channels, num_classes,
+                       width_multiplier=width_multiplier)
 
 
 class MobileNetV2(nn.Sequential):
 
     def __init__(self, in_channels, num_classes, width_multiplier=1.0):
 
-        def c(channels): return int(width_multiplier * channels)
+        def c(channels): return round_by(width_multiplier * channels)
 
         def make_layer(in_channels, out_channels, num_blocks=1,
                        expansion=6, stride=1):
@@ -46,13 +64,13 @@ class MobileNetV2(nn.Sequential):
             ('layer5', make_layer(c(64), c(96), num_blocks=3, stride=1)),
             ('layer6', make_layer(c(96), c(160), num_blocks=3, stride=2)),
             ('layer7', make_layer(c(160), c(320), num_blocks=1, stride=1)),
-            ('tail', ConvBlock(c(320), c(1280), 3, padding=1, stride=1)),
+            ('tail', ConvBlock(c(320), max(c(1280), 1280), 1)),
         ]))
 
         classifier = nn.Sequential(
             nn.AdaptiveAvgPool2d(output_size=1),
             nn.Flatten(),
-            nn.Linear(c(1280), num_classes),
+            nn.Linear(max(c(1280), 1280), num_classes),
         )
 
         super(MobileNetV2, self).__init__(OrderedDict([
@@ -115,3 +133,9 @@ def DWConvBlock(in_channels, out_channels, kernel_size,
     if use_relu:
         layers += [nn.ReLU6(inplace=True)]
     return nn.Sequential(*layers)
+
+
+def round_by(channels, divisor=8):
+    c = int(channels + divisor / 2) // divisor * divisor
+    c = c + divisor if c < (0.9 * channels) else c
+    return c

@@ -4,6 +4,14 @@ from torch import nn
 
 from neural.utils.hub import configure_model
 
+__all__ = [
+    'DRN',
+    'drn_a_18', 'drn_a_34',
+    'drn_c_26', 'drn_c_42',  'drn_c_58',
+    'drn_d_22', 'drn_d_24', 'drn_d_38', 'drn_d_40', 'drn_d_54', 'drn_d_56',
+    'drn_d_105', 'drn_d_107',
+]
+
 
 @configure_model({})
 def drn_a_18(in_channels=3, num_classes=1000):

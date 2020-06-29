@@ -1,6 +1,6 @@
 from math import log
 import torch
-from torch import nn
+from torch.nn.modules.loss import _Loss
 from torch.nn import functional as F
 
 
@@ -21,7 +21,7 @@ def ohem_loss(input, target, ignore_index=-100, thresh_loss=-log(0.7), numel_fra
         return loss[:n].mean()
 
 
-class OHEMLoss(nn.Module):
+class OHEMLoss(_Loss):
 
     def __init__(self, ignore_index=-100, thresh_loss=-log(0.7), numel_frac=0.01):
         super().__init__()

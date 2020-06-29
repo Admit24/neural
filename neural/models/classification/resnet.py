@@ -2,6 +2,7 @@ from collections import OrderedDict
 
 from torch import nn
 from torch.nn import functional as F
+from neural.utils.hub import configure_model
 
 __all__ = [
     'ResNet',
@@ -9,33 +10,58 @@ __all__ = [
 ]
 
 
-def resnet18(in_channels, num_classes):
+@configure_model({
+    'imagenet': {
+        'state_dict': 'http://files.deeplar.tk/neural/weights/resnet/resnet18-imagenet-ba211383.pth',
+    }
+})
+def resnet18(in_channels=3, num_classes=1000):
     return ResNet(in_channels, num_classes,
                   block_depth=[2, 2, 2, 2],
                   block=BasicBlock)
 
 
-def resnet34(in_channels, num_classes):
+@configure_model({
+    'imagenet': {
+        'state_dict': 'http://files.deeplar.tk/neural/weights/resnet/resnet34-imagenet-c9f799d0.pth',
+    }
+})
+def resnet34(in_channels=3, num_classes=1000):
     return ResNet(in_channels, num_classes,
                   block_depth=[3, 4, 6, 3],
                   block=BasicBlock)
 
 
-def resnet50(in_channels, num_classes):
+@configure_model({
+    'imagenet': {
+        'state_dict': 'http://files.deeplar.tk/neural/weights/resnet/resnet50-imagenet-eb6991ee.pth',
+    }
+})
+def resnet50(in_channels=3, num_classes=1000):
     return ResNet(in_channels, num_classes,
                   block_depth=[3, 4, 6, 3],
                   block=BottleneckBlock,
                   expansion=4)
 
 
-def resnet101(in_channels, num_classes):
+@configure_model({
+    'imagenet': {
+        'state_dict': 'http://files.deeplar.tk/neural/weights/resnet/resnet101-imagenet-b8d0e605.pth',
+    }
+})
+def resnet101(in_channels=3, num_classes=1000):
     return ResNet(in_channels, num_classes,
                   block_depth=[2, 3, 23, 3],
                   block=BottleneckBlock,
                   expansion=4)
 
 
-def resnet152(in_channels, num_classes):
+@configure_model({
+    'imagenet': {
+        'state_dict': 'http://files.deeplar.tk/neural/weights/resnet/resnet152-imagenet-e3a13154.pth',
+    }
+})
+def resnet152(in_channels=3, num_classes=1000):
     return ResNet(in_channels, num_classes,
                   block_depth=[3, 8, 36, 3],
                   block=BottleneckBlock,
