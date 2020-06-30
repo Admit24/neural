@@ -7,51 +7,51 @@ __all__ = [
 ]
 
 
-def regnet_002(in_channels, num_classes):
+def regnetx_002(in_channels, num_classes):
     return RegNet(in_channels, num_classes, [1, 1, 4, 7], [24, 56, 152, 368], 8)
 
 
-def regnet_004(in_channels, num_classes):
+def regnetx_004(in_channels, num_classes):
     return RegNet(in_channels, num_classes, [1, 2, 7, 12], [32, 64, 160, 384], 16)
 
 
-def regnet_006(in_channels, num_classes):
+def regnetx_006(in_channels, num_classes):
     return RegNet(in_channels, num_classes, [1, 3, 5, 7], [48, 96, 240, 528], 24)
 
 
-def regnet_008(in_channels, num_classes):
+def regnetx_008(in_channels, num_classes):
     return RegNet(in_channels, num_classes, [1, 3, 7, 5], [64, 128, 288, 672], 16)
 
 
-def regnet_016(in_channels, num_classes):
+def regnetx_016(in_channels, num_classes):
     return RegNet(in_channels, num_classes, [2, 4, 10, 2], [72, 168, 408, 912], group_width=24)
 
 
-def regnet_032(in_channels, num_classes):
+def regnetx_032(in_channels, num_classes):
     return RegNet(in_channels, num_classes, [2, 6, 15, 2], [96, 192, 432, 1008], group_width=48)
 
 
-def regnet_040(in_channels, num_classes):
+def regnetx_040(in_channels, num_classes):
     return RegNet(in_channels, num_classes, [2, 5, 14, 2], [80, 240, 560, 1360], group_width=40)
 
 
-def regnet_064(in_channels, num_classes):
+def regnetx_064(in_channels, num_classes):
     return RegNet(in_channels, num_classes, [2, 4, 10, 1], [168, 392, 784, 1624], group_width=56)
 
 
-def regnet_080(in_channels, num_classes):
+def regnetx_080(in_channels, num_classes):
     return RegNet(in_channels, num_classes, [2, 5, 15, 1], [80, 240, 720, 1920], group_width=120)
 
 
-def regnet_120(in_channels, num_classes):
+def regnetx_120(in_channels, num_classes):
     return RegNet(in_channels, num_classes, [2, 5, 11, 1], [224, 448, 896, 2240], group_width=112)
 
 
-def regnet_160(in_channels, num_classes):
+def regnetx_160(in_channels, num_classes):
     return RegNet(in_channels, num_classes, [2, 6, 13, 1], [256, 512, 896, 2048], group_width=128)
 
 
-def regnet_320(in_channels, num_classes):
+def regnetx_320(in_channels, num_classes):
     return RegNet(in_channels, num_classes, [2, 7, 13, 1], [336, 672, 1344, 2520], group_width=168)
 
 
@@ -86,15 +86,13 @@ class RegNet(nn.Sequential):
 
 
 class BottleneckBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, stride=1, group_width=1, expansion=1):
+    def __init__(self, in_channels, out_channels, stride=1, group_width=1):
         super(BottleneckBlock, self).__init__()
 
-        mid_channels = int(expansion * out_channels)
-
-        self.conv1 = ConvBlock(in_channels, mid_channels, 1)
-        self.conv2 = ConvBlock(mid_channels, mid_channels, 3, padding=1, stride=stride,
-                               groups=mid_channels // min(mid_channels, group_width))
-        self.conv3 = ConvBlock(mid_channels, out_channels, 1, use_relu=False)
+        self.conv1 = ConvBlock(in_channels, in_channels, 1)
+        self.conv2 = ConvBlock(in_channels, in_channels, 3, padding=1, stride=stride,
+                               groups=in_channels // min(in_channels, group_width))
+        self.conv3 = ConvBlock(in_channels, out_channels, 1, use_relu=False)
 
         if stride != 1 or in_channels != out_channels:
             self.downsample = ConvBlock(in_channels, out_channels, 1, stride=stride)

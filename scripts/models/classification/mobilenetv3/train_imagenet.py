@@ -1,30 +1,23 @@
-
 import argparse
 import os
-
 import torch
+from torch import nn
 from torch.utils.data import DataLoader
+
+from ignite.contrib.handlers import ProgressBar
+from ignite.contrib.handlers import LRScheduler
+
+import albumentations as albu
+from albumentations.pytorch import ToTensorV2 as ToTensor
 
 from apex import amp
 from apex.parallel import (
     DistributedDataParallel, convert_syncbn_model)
 
-from ignite.engine import Events
-from ignite.handlers import ModelCheckpoint, global_step_from_engine
-from ignite.contrib.handlers import (
-    create_lr_scheduler_with_warmup, CosineAnnealingScheduler)
-from ignite.contrib.handlers import LRScheduler
-from ignite.contrib.handlers import ProgressBar
 
-import albumentations as albu
-from albumentations.pytorch import ToTensorV2 as ToTensor
-
-from neural.models.segmentation.deeplabv2 import deeplabv2_resnet18
-from neural.engines.segmentation import (
-    create_segmentation_trainer, create_segmentation_evaluator)
-from neural.data.bdd import BDDSegmentation
-
-from neural.losses import OHEMLoss
+from neural.models.classification.mobilenetv3 import mobilenetv3_small
+from neural.data.imagenet import Imagenet
+from neural.engines.classification import create_classification_evaluator, create_classification_trainer
 
 from neural.utils.training import (
     setup_distributed, get_datasets_root, create_sampler)
@@ -34,37 +27,39 @@ parser.add_argument('--batch_size', type=int, required=True)
 parser.add_argument('--learning_rate', type=float, required=True)
 parser.add_argument('--weight_decay', type=float, default=1e-5)
 parser.add_argument('--epochs', type=int, required=True)
-parser.add_argument('--crop_size', type=int, default=768)
 parser.add_argument('--state_dict', type=str, required=False)
 
 parser.add_argument('--distributed', action='store_true')
 parser.add_argument('--local_rank', type=int, default=0)
 args = parser.parse_args()
 
+device = torch.device('cuda')
+
+
 distributed = args.distributed
 world_size, world_rank, local_rank = setup_distributed(
     distributed, args.local_rank)
 
-device = torch.device('cuda')
-
-crop_size = args.crop_size
 
 train_tfms = albu.Compose([
-    albu.RandomScale([0.5, 2.0]),
-    albu.RandomCrop(crop_size, crop_size),
+    albu.Resize(256, 256),
+    albu.RandomScale([0.2, 1]),
+    albu.RandomCrop(224, 224),
     albu.HorizontalFlip(),
     albu.HueSaturationValue(),
     albu.Normalize(),
     ToTensor(),
 ])
 val_tfms = albu.Compose([
+    albu.Resize(256, 256),
+    albu.CenterCrop(224, 224),
     albu.Normalize(),
     ToTensor(),
 ])
 
-dataset_dir = get_datasets_root('bdd100k/seg')
-train_dataset = BDDSegmentation(dataset_dir, split='train', transforms=train_tfms)
-val_dataset = BDDSegmentation(dataset_dir, split='val', transforms=val_tfms)
+dataset_dir = get_datasets_root('imagenet')
+train_dataset = Imagenet(dataset_dir, split='train', transforms=train_tfms)
+val_dataset = Imagenet(dataset_dir, split='val', transforms=val_tfms)
 
 
 sampler_args = dict(world_size=world_size,
@@ -88,33 +83,27 @@ val_loader = DataLoader(
     sampler=create_sampler(val_dataset, training=False, **sampler_args),
 )
 
-model = deeplabv2_resnet18(3, 19)
+model = mobilenetv3_small(3, 1000)
 
 if args.state_dict is not None:
     state_dict = torch.load(args.state_dict, map_location='cpu')
-    model.load_state_dict(state_dict, strict=False)
-
+    model.load_state_dict(state_dict, strict=True)
 
 model = model.to(device)
 
-optimizer = torch.optim.SGD(
-    [
-        {'params': model.features.parameters(), 'lr': args.learning_rate / 10, },
-        {'params': model.aspp.parameters(), },
-    ],
+optimizer = torch.optim.RMSprop(
+    model.parameters(),
     lr=args.learning_rate,
     weight_decay=args.weight_decay,
-    momentum=0.9,
 )
 
-loss_fn = OHEMLoss(ignore_index=255, numel_frac=0.05)
-loss_fn = loss_fn.cuda()
+loss_fn = nn.CrossEntropy()
+loss_fn = loss_fn.to(device)
 
 
-scheduler = torch.optim.lr_scheduler.OneCycleLR(
-    optimizer,
-    [args.learning_rate / 10, args.learning_rate],
-    epochs=args.epochs, steps_per_epoch=len(train_loader))
+scheduler = LRScheduler(torch.optim.lr_scheduler.ExponentialLR(
+    optimizer, 0.99
+))
 
 
 model, optimizer = amp.initialize(model, optimizer, opt_level="O2")
@@ -123,48 +112,39 @@ if args.distributed:
     model = DistributedDataParallel(model)
 
 
-trainer = create_segmentation_trainer(
+trainer = create_classification_trainer(
     model, optimizer, loss_fn,
     device=device,
     use_f16=True,
 )
-@trainer.on(Events.ITERATION_COMPLETED)
-def update_optimizer(trainer):
-    scheduler.step()
 
 
-evaluator = create_segmentation_evaluator(
-    model,
-    device=device,
-    num_classes=19,
-)
+trainer.add_event_handler(Events.EPOCH_COMPLETED(every=3), scheduler)
+
+evaluator = create_classification_evaluator(model, device=device)
 
 if local_rank == 0:
     ProgressBar(persist=False).attach(trainer, ['loss'])
-    ProgressBar(persist=False).attach(evaluator)
+    ProgressBar(persist=False).attach(evaluator, ['miou', 'accuracy'])
 
 
 @trainer.on(Events.EPOCH_COMPLETED)
 def evaluate(engine):
-    evaluator.run(val_loader)
+    epoch = trainer.state.epoch
+    state = evaluator.run(val_loader)
+    accuracy = state.metrics['accuracy']
+    top5 = state.metrics['topk']
 
-
-if local_rank == 0:
-    @evaluator.on(Events.COMPLETED)
-    def log_results(engine):
-        epoch = trainer.state.epoch
-        metrics = engine.state.metrics
-        miou, accuracy = metrics['miou'], metrics['accuracy']
-
-        print(f'Epoch [{epoch}]: miou={miou}, accuracy={accuracy}')
+    if local_rank == 0:
+        print(f"Epoch [{epoch}]: top1={accuracy}, top5={top5}")
 
 
 if local_rank == 0:
     checkpointer = ModelCheckpoint(
-        dirname=os.path.join('checkpoints', 'deeplabv2-bdd100k-weights'),
-        filename_prefix='contextnet',
-        score_name='miou',
-        score_function=lambda engine: engine.state.metrics['miou'],
+        dirname=os.path.join('checkpoints', 'mobilenetv3'),
+        filename_prefix='mobilenetv3_large',
+        score_name='accuracy',
+        score_function=lambda engine: engine.state.metrics['accuracy'],
         n_saved=5,
         global_step_transform=global_step_from_engine(trainer),
     )

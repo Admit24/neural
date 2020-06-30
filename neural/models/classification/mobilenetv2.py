@@ -12,30 +12,46 @@ __all__ = [
     'imagenet': {
         'state_dict': 'http://files.deeplar.tk/neural/weights/mobilenetv2/mobilenetv2_1_0-8b85393a.pth',
     },
-    'imagenet-1.0': {
-        'width_multiplier': 1,
-        'state_dict': 'http://files.deeplar.tk/neural/weights/mobilenetv2/mobilenetv2_1_0-8b85393a.pth',
-    },
-    'imagenet-0.75': {
-        'width_multiplier': 0.75,
-        'state_dict': 'http://files.deeplar.tk/neural/weights/mobilenetv2/mobilenetv2_0_75-b955620c.pth',
-    },
-    'imagenet-0.5': {
-        'width_multiplier': 0.5,
-        'state_dict': 'http://files.deeplar.tk/neural/weights/mobilenetv2/mobilenetv2_0_5-bd1d2a68.pth',
-    },
-    'imagenet-0.35': {
-        'width_multiplier': 0.35,
-        'state_dict': 'http://files.deeplar.tk/neural/weights/mobilenetv2/mobilenetv2_0.35-cc0f5647.pth',
-    },
-    'imagenet-0.25': {
-        'width_multiplier': 0.25,
-        'state_dict': 'http://files.deeplar.tk/neural/weights/mobilenetv2/mobilenetv2_0.25-e542a5f2.pth',
-    },
 })
 def mobilenetv2(in_channels=3, num_classes=1000, width_multiplier=1):
     return MobileNetV2(in_channels, num_classes,
                        width_multiplier=width_multiplier)
+
+
+@configure_model({
+    'imagenet': {
+        'state_dict': 'http://files.deeplar.tk/neural/weights/mobilenetv2/mobilenetv2_0_75-b955620c.pth',
+    }
+})
+def mobilenetv2_0_75(in_channels=3, num_classes=1000):
+    return mobilenetv2(in_channels, num_classes, width_multiplier=0.75)
+
+
+@configure_model({
+    'imagenet': {
+        'state_dict': 'http://files.deeplar.tk/neural/weights/mobilenetv2/mobilenetv2_0_5-bd1d2a68.pth',
+    }
+})
+def mobilenetv2_0_5(in_channels=3, num_classes=1000):
+    return mobilenetv2(in_channels, num_classes, width_multiplier=0.5)
+
+
+@configure_model({
+    'imagenet': {
+        'state_dict': 'http://files.deeplar.tk/neural/weights/mobilenetv2/mobilenetv2_0.35-cc0f5647.pth',
+    }
+})
+def mobilenetv2_0_35(in_channels=3, num_classes=1000):
+    return mobilenetv2(in_channels, num_classes, width_multiplier=0.35)
+
+
+@configure_model({
+    'imagenet': {
+        'state_dict': 'http://files.deeplar.tk/neural/weights/mobilenetv2/mobilenetv2_0.25-e542a5f2.pth',
+    }
+})
+def mobilenetv2_0_25(in_channels=3, num_classes=1000):
+    return mobilenetv2(in_channels, num_classes, width_multiplier=0.25)
 
 
 class MobileNetV2(nn.Sequential):
@@ -55,6 +71,8 @@ class MobileNetV2(nn.Sequential):
                     stride=1, expansion=expansion)]
             return nn.Sequential(*layers)
 
+        out_channels = max(1280, c(1280))
+
         features = nn.Sequential(OrderedDict([
             ('head', ConvBlock(in_channels, c(32), 3, padding=1, stride=2)),
             ('layer1', make_layer(c(32), c(16), expansion=1)),
@@ -64,13 +82,13 @@ class MobileNetV2(nn.Sequential):
             ('layer5', make_layer(c(64), c(96), num_blocks=3, stride=1)),
             ('layer6', make_layer(c(96), c(160), num_blocks=3, stride=2)),
             ('layer7', make_layer(c(160), c(320), num_blocks=1, stride=1)),
-            ('tail', ConvBlock(c(320), max(c(1280), 1280), 1)),
+            ('tail', ConvBlock(c(320), out_channels, 1)),
         ]))
 
         classifier = nn.Sequential(
             nn.AdaptiveAvgPool2d(output_size=1),
             nn.Flatten(),
-            nn.Linear(max(c(1280), 1280), num_classes),
+            nn.Linear(out_channels, num_classes),
         )
 
         super(MobileNetV2, self).__init__(OrderedDict([
@@ -87,7 +105,7 @@ class InvertedResidualBlock(nn.Module):
         hidden_channels = in_channels * expansion
         self.conv1 = (
             ConvBlock(in_channels, hidden_channels, 1)
-            if expansion != 1 else nn.Sequential())
+            if expansion != 1 else nn.Identity())
         self.conv2 = DWConvBlock(
             hidden_channels, hidden_channels, 3,
             padding=1, stride=stride)

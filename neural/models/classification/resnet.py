@@ -73,6 +73,12 @@ class ResNet(nn.Sequential):
     def __init__(self, in_channels, num_classes,
                  block_depth, block, expansion=1):
 
+        def make_layer(in_channels, out_channels, num_blocks, block, stride=1):
+            layers = [block(in_channels, out_channels, stride=stride)]
+            for _ in range(1, num_blocks):
+                layers += [block(out_channels, out_channels)]
+            return nn.Sequential(*layers)
+
         features = nn.Sequential(OrderedDict([
             ('head', nn.Sequential(
                 nn.Conv2d(in_channels, 64, kernel_size=7,
@@ -104,12 +110,35 @@ class ResNet(nn.Sequential):
             ('classifier', classifier),
         ]))
 
+    @staticmethod
+    def replace_stride_with_convolution(model, output_stride=32, multigrid_rates=None):
+        if output_stride not in [8, 16, 32]:
+            raise ValueError("output stride should be {8, 16, 32}. Got {}."
+                             .format(output_stride))
 
-def make_layer(in_channels, out_channels, num_blocks, block, stride=1):
-    layers = [block(in_channels, out_channels, stride=stride)]
-    for _ in range(1, num_blocks):
-        layers += [block(out_channels, out_channels)]
-    return nn.Sequential(*layers)
+        def patch_layer(layer, dilation, multigrid_rates=None):
+            # change the stride of the first block
+            if isinstance(layer[0], BasicBlock):
+                layer[0].conv1.stride = 1
+            elif isinstance(layer[0], BottleneckBlock):
+                layer[0].conv2.stride = 1
+            layer[0].downsample[0].stride = 1
+            # change the dilation rate of all the convolutions in the layer
+            for id, m in enumerate(layer.children()):
+                rate = 1 if multigrid_rates is None else multigrid_rates[id]
+
+                if isinstance(m, BasicBlock):
+                    m.conv1.dilation = rate * dilation
+                    m.conv1.padding = rate * dilation
+                if isinstance(m, BottleneckBlock):
+                    m.conv2.dilation = rate * dilation
+                    m.conv2.padding = rate * dilation
+
+        if output_stride == 8:
+            patch_layer(model.layer3, dilation=2)
+            patch_layer(model.layer4, dilation=4, multigrid_rates=multigrid_rates)
+        elif output_stride == 16:
+            patch_layer(model.layer4, dilation=2, multigrid_rates=multigrid_rates)
 
 
 class BasicBlock(nn.Module):
