@@ -102,7 +102,7 @@ model = model.to(device)
 optimizer = torch.optim.SGD(
     [
         {'params': model.features.parameters(), 'lr': args.learning_rate / 2, },
-        {'params': chain(model.aspp.parameters(), model.classifier.parameters), },
+        {'params': chain(model.aspp.parameters(), model.classifier.parameters()), },
     ],
     lr=args.learning_rate,
     weight_decay=args.weight_decay,
@@ -115,7 +115,7 @@ loss_fn = loss_fn.cuda()
 
 scheduler = torch.optim.lr_scheduler.OneCycleLR(
     optimizer,
-    [args.learning_rate / 10, args.learning_rate],
+    [args.learning_rate / 2, args.learning_rate],
     epochs=args.epochs, steps_per_epoch=len(train_loader))
 
 
