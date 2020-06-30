@@ -12,7 +12,7 @@ __all__ = [
 @configure_model({
     'cityscapes': {
         'in_channels': 3, 'out_channels': 19,
-        'state_dict': 'http://files.deeplar.tk/neural/weights/fastscnn/fastscnn-cityscapes-705f0768.pth',
+        'state_dict': 'http://files.deeplar.tk/neural/weights/fastscnn/fastscnn-cityscapes-e03bfdea.pth',
     }
 })
 def fastscnn(in_channels, out_channels):
