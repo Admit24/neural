@@ -1,5 +1,7 @@
 from ignite.engine import Engine, Events
 
+from apex import amp
+
 
 def create_classification_trainer(
         model, optimizer, loss_fn,

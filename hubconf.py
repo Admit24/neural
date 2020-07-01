@@ -14,7 +14,7 @@ from neural.models.classification.drn import (
 
 # segmentation models
 from neural.models.segmentation.segnet import segnet
-from neural.models.segmentation.fasterscnn import fastscnn
+from neural.models.segmentation.fastscnn import fastscnn
 from neural.models.segmentation.enet import enet
 from neural.models.segmentation.contextnet import (
     contextnet12, contextnet14, contextnet18)

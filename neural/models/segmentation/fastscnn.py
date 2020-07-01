@@ -12,7 +12,7 @@ __all__ = [
 @configure_model({
     'cityscapes': {
         'in_channels': 3, 'out_channels': 19,
-        'state_dict': 'http://files.deeplar.tk/neural/weights/fastscnn/fastscnn-cityscapes-e03bfdea.pth',
+        'state_dict': 'http://files.deeplar.tk/neural/weights/fastscnn/fastscnn-cityscapes-7db25a26.pth',
     }
 })
 def fastscnn(in_channels, out_channels):
@@ -68,7 +68,7 @@ class FastSCNN(nn.Module):
         classes = self.classifier(fusion)
 
         return F.interpolate(
-            classes, scale_factor=8, mode='bilinear', align_corners=True)
+            classes, size=input.shape[2:], mode='bilinear', align_corners=True)
 
 
 class FeatureFusionModule(nn.Module):
@@ -78,7 +78,6 @@ class FeatureFusionModule(nn.Module):
         lowres_channels, highres_channels = in_channels
 
         self.lowres = nn.Sequential(
-            nn.UpsamplingBilinear2d(scale_factor=scale_factor),
             DWConv2dBlock(lowres_channels, lowres_channels, kernel_size=3,
                           padding=scale_factor, dilation=scale_factor),
             Conv2dBlock(lowres_channels, out_channels,
@@ -91,6 +90,7 @@ class FeatureFusionModule(nn.Module):
         )
 
     def forward(self, lowres, highres):
+        lowres = F.interpolate(lowres, size=highres.shape[2:], mode='bilinear', align_corners=True)
         lowres = self.lowres(lowres)
         highres = self.highres(highres)
         return F.relu(lowres + highres)
