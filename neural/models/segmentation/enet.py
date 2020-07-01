@@ -9,12 +9,7 @@ from neural.utils.hub import configure_model
 __all__ = ['ENet', 'enet']
 
 
-@configure_model({
-    'bdd100k': {
-        'in_channels': 3, 'out_channels': 19,
-        'state_dict': 'http://files.deeplar.tk/neural/weights/enet/enet-bdd100k-e44f0f02.pth',
-    }
-})
+@configure_model({})
 def enet(in_channels=3, out_channels=19):
     return ENet(in_channels, out_channels)
 
