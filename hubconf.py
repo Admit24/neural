@@ -4,6 +4,7 @@ from neural.models.classification.alexnet import alexnet
 from neural.models.classification.vgg import vgg11, vgg13, vgg16, vgg19
 from neural.models.classification.resnet import resnet18, resnet34, resnet50, resnet101, resnet152
 from neural.models.classification.mobilenetv2 import mobilenetv2
+from neural.models.classification.ghostnet import ghostnet_1_0
 from neural.models.classification.efficientnet import (
     efficientnet_b0, efficientnet_b1, efficientnet_b2, efficientnet_b3, efficientnet_b4,
     efficientnet_b5, efficientnet_b6, efficientnet_b7)
