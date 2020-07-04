@@ -34,7 +34,7 @@ def contextnet12(in_channels=3, out_channels=19):
         'width_multiplier': 2,
         'state_dict': 'http://files.deeplar.tk/neural/weights/contextnet/contextnet14_2x-cityscapes-073a0b7d.pth',
     },
-    'dbb100k-2x': {
+    'bdd100k-2x': {
         'in_channels': 3, 'out_channels': 19,
         'width_multiplier': 2,
         'state_dict': 'http://files.deeplar.tk/neural/weights/contextnet/contextnet14_2x-bdd100k-586cfea9.pth',

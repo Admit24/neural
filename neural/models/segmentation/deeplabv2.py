@@ -16,6 +16,11 @@ __all__ = [
         'in_channels': 3,
         'out_channels': 182,
         'state_dict': 'http://files.deeplar.tk/neural/weights/deeplabv2/deeplabv2_resnet18-cocostuff-1c984de7.pth',
+    },
+    'bdd100k': {
+        'in_channels': 3,
+        'out_channels': 19,
+        'state_dict': 'http://files.deeplar.tk/neural/weights/deeplabv2/deeplabv2_resnet18-bdd100k-bda23622.pth',
     }
 })
 def deeplabv2_resnet18(in_channels, out_channels):

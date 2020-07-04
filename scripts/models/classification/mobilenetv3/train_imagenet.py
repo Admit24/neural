@@ -5,6 +5,8 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from ignite.contrib.handlers import ProgressBar
+from ignite.handlers import ModelCheckpoint, global_step_from_engine
+from ignite.engine import Events
 from ignite.contrib.handlers import LRScheduler
 
 import albumentations as albu
@@ -28,7 +30,6 @@ parser.add_argument('--learning_rate', type=float, required=True)
 parser.add_argument('--weight_decay', type=float, default=1e-5)
 parser.add_argument('--epochs', type=int, required=True)
 parser.add_argument('--state_dict', type=str, required=False)
-
 parser.add_argument('--distributed', action='store_true')
 parser.add_argument('--local_rank', type=int, default=0)
 args = parser.parse_args()
@@ -91,19 +92,19 @@ if args.state_dict is not None:
 
 model = model.to(device)
 
-optimizer = torch.optim.RMSprop(
+optimizer = torch.optim.SGD(
     model.parameters(),
     lr=args.learning_rate,
     weight_decay=args.weight_decay,
+    momentum=0.9,
 )
 
-loss_fn = nn.CrossEntropy()
+loss_fn = nn.CrossEntropyLoss()
 loss_fn = loss_fn.to(device)
 
 
-scheduler = LRScheduler(torch.optim.lr_scheduler.ExponentialLR(
-    optimizer, 0.99
-))
+scheduler = LRScheduler(torch.optim.lr_scheduler.OneCycleLR(
+    optimizer, args.learning_rate, steps_per_epoch=len(train_loader), epochs=args.epochs))
 
 
 model, optimizer = amp.initialize(model, optimizer, opt_level="O2")
@@ -119,24 +120,18 @@ trainer = create_classification_trainer(
 )
 
 
-trainer.add_event_handler(Events.EPOCH_COMPLETED(every=3), scheduler)
+trainer.add_event_handler(Events.ITERATION_COMPLETED, scheduler)
 
 evaluator = create_classification_evaluator(model, device=device)
 
 if local_rank == 0:
     ProgressBar(persist=False).attach(trainer, ['loss'])
-    ProgressBar(persist=False).attach(evaluator, ['miou', 'accuracy'])
+    ProgressBar(persist=False).attach(evaluator)
 
 
 @trainer.on(Events.EPOCH_COMPLETED)
 def evaluate(engine):
-    epoch = trainer.state.epoch
-    state = evaluator.run(val_loader)
-    accuracy = state.metrics['accuracy']
-    top5 = state.metrics['topk']
-
-    if local_rank == 0:
-        print(f"Epoch [{epoch}]: top1={accuracy}, top5={top5}")
+    evaluator.run(val_loader)
 
 
 if local_rank == 0:

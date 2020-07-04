@@ -133,7 +133,7 @@ class InvertedResidualBlock(nn.Module):
 
         self.se = (
             SEBlock(expansion_channels, expansion_channels, reduction_ratio=4)
-            if use_se else None
+            if use_se else nn.Identity()
         )
 
         self.reduction = ConvBlock(expansion_channels, out_channels, 1,

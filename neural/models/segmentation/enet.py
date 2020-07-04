@@ -9,7 +9,12 @@ from neural.utils.hub import configure_model
 __all__ = ['ENet', 'enet']
 
 
-@configure_model({})
+@configure_model({
+    'bdd100k': {
+        'in_channels': 3, 'out_channels': 19,
+        'state_dict': 'http://files.deeplar.tk/neural/weights/enet/enet-bdd100k-e44f0f02.pth',
+    }
+})
 def enet(in_channels=3, out_channels=19):
     return ENet(in_channels, out_channels)
 
@@ -17,7 +22,7 @@ def enet(in_channels=3, out_channels=19):
 class ENet(nn.Module):
 
     def __init__(self, in_channels, out_channels):
-        super().__init__()
+        super(ENet, self).__init__()
 
         self.head = InitialBlock(in_channels, 16)
 
