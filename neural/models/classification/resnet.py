@@ -111,34 +111,38 @@ class ResNet(nn.Sequential):
         ]))
 
     @staticmethod
-    def replace_stride_with_convolution(model, output_stride=32, multigrid_rates=None):
+    def replace_stride_with_convolution(model, output_stride, multigrid_rates=None):
         if output_stride not in [8, 16, 32]:
             raise ValueError("output stride should be {8, 16, 32}. Got {}."
                              .format(output_stride))
 
-        def patch_layer(layer, dilation, multigrid_rates=None):
+        def patch_layer(layer, dilation, stride=1, multigrid_rates=None):
+            from torch.nn.modules.utils import _pair
             # change the stride of the first block
             if isinstance(layer[0], BasicBlock):
-                layer[0].conv1.stride = 1
+                layer[0].conv1[0].stride = _pair(stride)
             elif isinstance(layer[0], BottleneckBlock):
-                layer[0].conv2.stride = 1
-            layer[0].downsample[0].stride = 1
+                layer[0].conv2[0].stride = _pair(stride)
+            layer[0].downsample[0].stride = _pair(stride)
             # change the dilation rate of all the convolutions in the layer
             for id, m in enumerate(layer.children()):
                 rate = 1 if multigrid_rates is None else multigrid_rates[id]
 
                 if isinstance(m, BasicBlock):
-                    m.conv1.dilation = rate * dilation
-                    m.conv1.padding = rate * dilation
+                    m.conv1[0].dilation = _pair(rate * dilation)
+                    m.conv1[0].padding = _pair(rate * dilation)
                 if isinstance(m, BottleneckBlock):
-                    m.conv2.dilation = rate * dilation
-                    m.conv2.padding = rate * dilation
+                    m.conv2[0].dilation = _pair(rate * dilation)
+                    m.conv2[0].padding = _pair(rate * dilation)
 
         if output_stride == 8:
-            patch_layer(model.layer3, dilation=2)
-            patch_layer(model.layer4, dilation=4, multigrid_rates=multigrid_rates)
+            patch_layer(model.features.layer3, dilation=2)
+            patch_layer(model.features.layer4, dilation=4, multigrid_rates=multigrid_rates)
         elif output_stride == 16:
-            patch_layer(model.layer4, dilation=2, multigrid_rates=multigrid_rates)
+            patch_layer(model.features.layer4, dilation=2, multigrid_rates=multigrid_rates)
+        elif output_stride == 32:
+            patch_layer(model.features.layer3, dilation=1, stride=2)
+            patch_layer(model.features.layer4, dilation=1, stride=2)
 
 
 class BasicBlock(nn.Module):
@@ -170,10 +174,10 @@ class BasicBlock(nn.Module):
 
 class BottleneckBlock(nn.Module):
 
-    def __init__(self, in_channels, out_channels, stride=1, expansion=4):
+    def __init__(self, in_channels, out_channels, stride=1, expansion_ratio=4):
         super().__init__()
 
-        width = out_channels // expansion
+        width = out_channels // expansion_ratio
 
         self.conv1 = ConvBlock(
             in_channels, width, kernel_size=1)
