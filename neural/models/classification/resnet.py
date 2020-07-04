@@ -68,10 +68,29 @@ def resnet152(in_channels=3, num_classes=1000):
                   expansion=4)
 
 
+def wide_resnet50_2(in_channels, num_classes):
+    return ResNet(in_channels, num_classes,
+                  block_depth=[3, 4, 6, 3],
+                  block=BottleneckBlock,
+                  expansion=4,
+                  width_multiplier=2)
+
+
+def wide_resnet101_2(in_channels, num_classes):
+    return ResNet(in_channels, num_classes,
+                  block_depth=[2, 3, 23, 3],
+                  block=BottleneckBlock,
+                  expansion=4,
+                  width_multiplier=2)
+
+
 class ResNet(nn.Sequential):
 
     def __init__(self, in_channels, num_classes,
-                 block_depth, block, expansion=1):
+                 block_depth, block, expansion=1,
+                 width_multiplier=1):
+
+        def c(channels): width_multiplier * channels
 
         def make_layer(in_channels, out_channels, num_blocks, block, stride=1):
             layers = [block(in_channels, out_channels, stride=stride)]
@@ -81,21 +100,21 @@ class ResNet(nn.Sequential):
 
         features = nn.Sequential(OrderedDict([
             ('head', nn.Sequential(
-                nn.Conv2d(in_channels, 64, kernel_size=7,
+                nn.Conv2d(in_channels, c(64), kernel_size=7,
                           stride=2, padding=3, bias=False),
-                nn.BatchNorm2d(64),
+                nn.BatchNorm2d(c(64)),
                 nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
             )),
             ('layer1', make_layer(
-                64, 64 * expansion, block_depth[0], block=block, stride=1)),
+                c(64), c(64) * expansion, block_depth[0], block=block, stride=1)),
             ('layer2', make_layer(
-                64 * expansion, 128 * expansion, block_depth[1],
+                c(64) * expansion, c(128) * expansion, block_depth[1],
                 block=block, stride=2)),
             ('layer3', make_layer(
-                128 * expansion, 256 * expansion, block_depth[2],
+                c(128) * expansion, c(256) * expansion, block_depth[2],
                 block=block, stride=2)),
             ('layer4', make_layer(
-                256 * expansion, 512 * expansion, block_depth[3],
+                c(256) * expansion, c(512) * expansion, block_depth[3],
                 block=block, stride=2)),
         ]))
 
