@@ -1,7 +1,6 @@
 from functools import partial
 from torch import nn
 from torch.nn import functional as F
-from torch.nn.modules.utils import _pair
 
 from neural.utils.hub import configure_model
 
