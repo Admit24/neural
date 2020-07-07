@@ -26,7 +26,7 @@ __all__ = [
 def deeplabv2_resnet18(in_channels, out_channels):
     from neural.models.classification.resnet import resnet18, ResNet
     model = resnet18(in_channels, 1)
-    ResNet.replace_stride_with_convolution(model, output_stride=8)
+    ResNet.replace_stride_with_dilation(model, output_stride=8)
 
     return DeepLabV2(model.features, 512, out_channels, atrous_rates=[6, 12, 18, 24])
 
@@ -34,7 +34,7 @@ def deeplabv2_resnet18(in_channels, out_channels):
 def deeplabv2_resnet34(in_channels, out_channels):
     from neural.models.classification.resnet import resnet34, ResNet
     model = resnet34(in_channels, 1)
-    ResNet.replace_stride_with_convolution(model, output_stride=8)
+    ResNet.replace_stride_with_dilation(model, output_stride=8)
 
     return DeepLabV2(model.features, 512, out_channels, atrous_rates=[6, 12, 18, 24])
 
@@ -42,7 +42,7 @@ def deeplabv2_resnet34(in_channels, out_channels):
 def deeplabv2_resnet50(in_channels, out_channels):
     from neural.models.classification.resnet import resnet50, ResNet
     model = resnet50(in_channels, 1)
-    ResNet.replace_stride_with_convolution(model, output_stride=8)
+    ResNet.replace_stride_with_dilation(model, output_stride=8)
 
     return DeepLabV2(model.features, 2048, out_channels, atrous_rates=[6, 12, 18, 24])
 
@@ -50,7 +50,7 @@ def deeplabv2_resnet50(in_channels, out_channels):
 def deeplabv2_resnet101(in_channels, out_channels):
     from neural.models.classification.resnet import resnet101, ResNet
     model = resnet101(in_channels, 1)
-    ResNet.replace_stride_with_convolution(model, output_stride=8)
+    ResNet.replace_stride_with_dilation(model, output_stride=8)
 
     return DeepLabV2(model.features, 2048, out_channels, atrous_rates=[6, 12, 18, 24])
 
