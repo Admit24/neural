@@ -1,4 +1,5 @@
 
+import cv2
 from torch import nn
 import argparse
 import os
@@ -33,10 +34,8 @@ from neural.utils.training import (
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', type=int, required=True)
 parser.add_argument('--learning_rate', type=float, required=True)
-parser.add_argument('--weight_decay', type=float, default=1e-5)
+parser.add_argument('--weight_decay', type=float, default=2e-4)
 parser.add_argument('--epochs', type=int, required=True)
-parser.add_argument('--cycles', type=int, default=1)
-parser.add_argument('--cycle_mult', type=float, default=1/3)
 parser.add_argument('--crop_size', type=int, default=768)
 parser.add_argument('--state_dict', type=str, required=False)
 
@@ -54,8 +53,9 @@ device = torch.device('cuda')
 
 crop_size = args.crop_size
 
+
 train_tfms = albu.Compose([
-    albu.RandomScale([0.5, 2.0]),
+    albu.RandomScale([0.5, 1.5], interpolation=cv2.INTER_CUBIC),
     albu.RandomCrop(crop_size, crop_size),
     albu.HorizontalFlip(),
     albu.HueSaturationValue(),
@@ -110,27 +110,27 @@ def parameters_of(module, type):
                 yield p
 
 
-optimizer = torch.optim.SGD(
+optimizer = torch.optim.AdamW(
     [
         {'params': parameters_of(model, (nn.Conv2d, nn.ConvTranspose2d, nn.PReLU)),
          'weight_decay': args.weight_decay, },
         {'params': parameters_of(model, nn.BatchNorm2d), }
     ],
     lr=args.learning_rate,
-    weight_decay=args.weight_decay,
-    momentum=0.9,
 )
 
 
-loss_fn = AdaptWeightedCE(num_classes=19, ignore_index=255, weight_fn=lambda p: 1 / (torch.log(1.02 + p)))
+class_freq = torch.from_numpy(Cityscapes.CLASS_FREQ).float()
+weight = 1 / torch.log(1.02 + class_freq)
+loss_fn = torch.nn.CrossEntropyLoss(ignore_index=255, weight=weight)
+# loss_fn = OHEMLoss(ignore_index=255)
 loss_fn = loss_fn.cuda()
 
 
 scheduler = CosineAnnealingScheduler(
     optimizer, 'lr',
     args.learning_rate, 1e-6,
-    cycle_size=args.epochs * len(train_loader) // args.cycles,
-    cycle_mult=args.cycle_mult
+    cycle_size=args.epochs * len(train_loader),
 )
 scheduler = create_lr_scheduler_with_warmup(
     scheduler, 0, args.learning_rate, 1000)
