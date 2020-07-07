@@ -111,7 +111,7 @@ class ResNet(nn.Sequential):
         ]))
 
     @staticmethod
-    def replace_stride_with_convolution(model, output_stride, multigrid_rates=None):
+    def replace_stride_with_dilation(model, output_stride, multigrid_rates=None):
         if output_stride not in [8, 16, 32]:
             raise ValueError("output stride should be {8, 16, 32}. Got {}."
                              .format(output_stride))
