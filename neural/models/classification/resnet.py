@@ -111,7 +111,7 @@ class ResNet(nn.Sequential):
         ]))
 
     @staticmethod
-    def replace_stride_with_convolution(model, output_stride=32, multigrid_rates=None):
+    def replace_stride_with_convolution(model, output_stride, multigrid_rates=None):
         if output_stride not in [8, 16, 32]:
             raise ValueError("output stride should be {8, 16, 32}. Got {}."
                              .format(output_stride))
@@ -135,10 +135,10 @@ class ResNet(nn.Sequential):
                     m.conv2.padding = rate * dilation
 
         if output_stride == 8:
-            patch_layer(model.layer3, dilation=2)
-            patch_layer(model.layer4, dilation=4, multigrid_rates=multigrid_rates)
+            patch_layer(model.features.layer3, dilation=2)
+            patch_layer(model.features.layer4, dilation=4, multigrid_rates=multigrid_rates)
         elif output_stride == 16:
-            patch_layer(model.layer4, dilation=2, multigrid_rates=multigrid_rates)
+            patch_layer(model.features.layer4, dilation=2, multigrid_rates=multigrid_rates)
 
 
 class BasicBlock(nn.Module):
