@@ -78,7 +78,7 @@ class BisenetV2(nn.Module):
         semantic = self.semantic(input)
         x = self.aggregation(detail, semantic)
         x = self.classifier(x)
-        return F.interpolate(x, scale_factor=4, mode='bilinear', align_corners=True)
+        return F.interpolate(x, size=input.shape[2:], mode='bilinear', align_corners=True)
 
 
 class StemBlock(nn.Module):
@@ -198,6 +198,8 @@ class GatherExpansionBlock(nn.Module):
             )
         )
 
+        self.activation = nn.ReLU(inplace=True)
+
     def forward(self, input):
         x = self.conv1(input)
         x = self.conv2(x)
@@ -205,7 +207,7 @@ class GatherExpansionBlock(nn.Module):
         if self.downsample is not None:
             input = self.downsample(input)
 
-        return x + input
+        return self.activation(x + input)
 
 
 class ContextEmbeddingBlock(nn.Module):
