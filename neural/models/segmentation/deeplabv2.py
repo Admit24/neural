@@ -24,59 +24,35 @@ __all__ = [
     }
 })
 def deeplabv2_resnet18(in_channels, out_channels):
-    from neural.models.classification.resnet import resnet18
-    features = resnet18(in_channels, 1).features
-    patch_resnet_(features)
+    from neural.models.classification.resnet import resnet18, ResNet
+    model = resnet18(in_channels, 1)
+    ResNet.replace_stride_with_convolution(model, output_stride=8)
 
-    return DeepLabV2(features, 512, out_channels, atrous_rates=[6, 12, 18, 24])
+    return DeepLabV2(model.features, 512, out_channels, atrous_rates=[6, 12, 18, 24])
 
 
 def deeplabv2_resnet34(in_channels, out_channels):
-    from neural.models.classification.resnet import resnet34
-    features = resnet34(in_channels, 1).features
-    patch_resnet_(features)
+    from neural.models.classification.resnet import resnet34, ResNet
+    model = resnet34(in_channels, 1)
+    ResNet.replace_stride_with_convolution(model, output_stride=8)
 
-    return DeepLabV2(features, 512, out_channels, atrous_rates=[6, 12, 18, 24])
+    return DeepLabV2(model.features, 512, out_channels, atrous_rates=[6, 12, 18, 24])
 
 
 def deeplabv2_resnet50(in_channels, out_channels):
-    from neural.models.classification.resnet import resnet50
-    features = resnet50(in_channels, 1).features
-    patch_resnet_(features)
+    from neural.models.classification.resnet import resnet50, ResNet
+    model = resnet50(in_channels, 1)
+    ResNet.replace_stride_with_convolution(model, output_stride=8)
 
-    return DeepLabV2(features, 2048, out_channels, atrous_rates=[6, 12, 18, 24])
+    return DeepLabV2(model.features, 2048, out_channels, atrous_rates=[6, 12, 18, 24])
 
 
 def deeplabv2_resnet101(in_channels, out_channels):
-    from neural.models.classification.resnet import resnet101
-    features = resnet101(in_channels, 1).features
-    patch_resnet_(features)
+    from neural.models.classification.resnet import resnet101, ResNet
+    model = resnet101(in_channels, 1)
+    ResNet.replace_stride_with_convolution(model, output_stride=8)
 
-    return DeepLabV2(features, 2048, out_channels, atrous_rates=[6, 12, 18, 24])
-
-
-def patch_resnet_(model):
-    def patch_resnet_layer_(layer, dilation):
-        from neural.models.classification.resnet import BasicBlock, BottleneckBlock
-
-        def convert_blocks(block):
-            if isinstance(block, BasicBlock):
-                block.conv1[0].stride = _pair(1)
-                block.conv1[0].padding = _pair(dilation)
-                block.conv1[0].dilation = _pair(dilation)
-                if block.downsample is not None:
-                    block.downsample[0].stride = _pair(1)
-            elif isinstance(block, BottleneckBlock):
-                block.conv2[0].stride = _pair(1)
-                block.conv2[0].padding = _pair(dilation)
-                block.conv2[0].dilation = _pair(dilation)
-                if block.downsample is not None:
-                    block.downsample[0].stride = _pair(1)
-
-        layer.apply(convert_blocks)
-
-    patch_resnet_layer_(model.layer3, dilation=2)
-    patch_resnet_layer_(model.layer4, dilation=4)
+    return DeepLabV2(model.features, 2048, out_channels, atrous_rates=[6, 12, 18, 24])
 
 
 class DeepLabV2(nn.Sequential):

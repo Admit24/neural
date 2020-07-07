@@ -68,10 +68,29 @@ def resnet152(in_channels=3, num_classes=1000):
                   expansion=4)
 
 
+def wide_resnet50_2(in_channels, num_classes):
+    return ResNet(in_channels, num_classes,
+                  block_depth=[3, 4, 6, 3],
+                  block=BottleneckBlock,
+                  expansion=4,
+                  width_multiplier=2)
+
+
+def wide_resnet101_2(in_channels, num_classes):
+    return ResNet(in_channels, num_classes,
+                  block_depth=[2, 3, 23, 3],
+                  block=BottleneckBlock,
+                  expansion=4,
+                  width_multiplier=2)
+
+
 class ResNet(nn.Sequential):
 
     def __init__(self, in_channels, num_classes,
-                 block_depth, block, expansion=1):
+                 block_depth, block, expansion=1,
+                 width_multiplier=1):
+
+        def c(channels): width_multiplier * channels
 
         def make_layer(in_channels, out_channels, num_blocks, block, stride=1):
             layers = [block(in_channels, out_channels, stride=stride)]
@@ -81,21 +100,21 @@ class ResNet(nn.Sequential):
 
         features = nn.Sequential(OrderedDict([
             ('head', nn.Sequential(
-                nn.Conv2d(in_channels, 64, kernel_size=7,
+                nn.Conv2d(in_channels, c(64), kernel_size=7,
                           stride=2, padding=3, bias=False),
-                nn.BatchNorm2d(64),
+                nn.BatchNorm2d(c(64)),
                 nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
             )),
             ('layer1', make_layer(
-                64, 64 * expansion, block_depth[0], block=block, stride=1)),
+                c(64), c(64) * expansion, block_depth[0], block=block, stride=1)),
             ('layer2', make_layer(
-                64 * expansion, 128 * expansion, block_depth[1],
+                c(64) * expansion, c(128) * expansion, block_depth[1],
                 block=block, stride=2)),
             ('layer3', make_layer(
-                128 * expansion, 256 * expansion, block_depth[2],
+                c(128) * expansion, c(256) * expansion, block_depth[2],
                 block=block, stride=2)),
             ('layer4', make_layer(
-                256 * expansion, 512 * expansion, block_depth[3],
+                c(256) * expansion, c(512) * expansion, block_depth[3],
                 block=block, stride=2)),
         ]))
 
@@ -116,29 +135,33 @@ class ResNet(nn.Sequential):
             raise ValueError("output stride should be {8, 16, 32}. Got {}."
                              .format(output_stride))
 
-        def patch_layer(layer, dilation, multigrid_rates=None):
+        def patch_layer(layer, dilation, stride=1, multigrid_rates=None):
+            from torch.nn.modules.utils import _pair
             # change the stride of the first block
             if isinstance(layer[0], BasicBlock):
-                layer[0].conv1.stride = 1
+                layer[0].conv1[0].stride = _pair(stride)
             elif isinstance(layer[0], BottleneckBlock):
-                layer[0].conv2.stride = 1
-            layer[0].downsample[0].stride = 1
+                layer[0].conv2[0].stride = _pair(stride)
+            layer[0].downsample[0].stride = _pair(stride)
             # change the dilation rate of all the convolutions in the layer
             for id, m in enumerate(layer.children()):
                 rate = 1 if multigrid_rates is None else multigrid_rates[id]
 
                 if isinstance(m, BasicBlock):
-                    m.conv1.dilation = rate * dilation
-                    m.conv1.padding = rate * dilation
+                    m.conv1[0].dilation = _pair(rate * dilation)
+                    m.conv1[0].padding = _pair(rate * dilation)
                 if isinstance(m, BottleneckBlock):
-                    m.conv2.dilation = rate * dilation
-                    m.conv2.padding = rate * dilation
+                    m.conv2[0].dilation = _pair(rate * dilation)
+                    m.conv2[0].padding = _pair(rate * dilation)
 
         if output_stride == 8:
             patch_layer(model.features.layer3, dilation=2)
             patch_layer(model.features.layer4, dilation=4, multigrid_rates=multigrid_rates)
         elif output_stride == 16:
             patch_layer(model.features.layer4, dilation=2, multigrid_rates=multigrid_rates)
+        elif output_stride == 32:
+            patch_layer(model.features.layer3, dilation=1, stride=2)
+            patch_layer(model.features.layer4, dilation=1, stride=2)
 
 
 class BasicBlock(nn.Module):
@@ -170,10 +193,10 @@ class BasicBlock(nn.Module):
 
 class BottleneckBlock(nn.Module):
 
-    def __init__(self, in_channels, out_channels, stride=1, expansion=4):
+    def __init__(self, in_channels, out_channels, stride=1, expansion_ratio=4):
         super().__init__()
 
-        width = out_channels // expansion
+        width = out_channels // expansion_ratio
 
         self.conv1 = ConvBlock(
             in_channels, width, kernel_size=1)
