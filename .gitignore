@@ -134,3 +134,6 @@ dmypy.json
 # ignore the weights and checkpoints directory
 weights
 checkpoints
+
+# pytorch_lightning logs
+lightning_logs
