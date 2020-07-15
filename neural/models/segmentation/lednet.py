@@ -131,7 +131,7 @@ class DownsamplingBlock(nn.Module):
 
         self.conv = nn.Conv2d(in_channels, out_channels - in_channels,
                               kernel_size=3, padding=1, stride=2)
-        self.pool = nn.MaxPool2d(kernel_size=2)
+        self.pool = nn.MaxPool2d(kernel_size=2, ceil_mode=True)
         self.bn = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
 
@@ -162,15 +162,15 @@ def FactorizedConvBlock(in_channels, out_channels, dilation=1, use_relu=True):
     layers = [
         nn.Conv2d(
             in_channels, in_channels,
-            kernel_size=(1, 3), padding=(0, dilation),
-            dilation=(1, dilation),
-            bias=False,
+            kernel_size=(3, 1), padding=(dilation, 0),
+            dilation=(dilation, 1),
+            bias=True,
         ),
         nn.ReLU(inplace=True),
         nn.Conv2d(
             in_channels, in_channels,
-            kernel_size=(3, 1), padding=(dilation, 0),
-            dilation=(dilation, 1),
+            kernel_size=(1, 3), padding=(0, dilation),
+            dilation=(1, dilation),
             bias=False,
         ),
         nn.BatchNorm2d(in_channels),
