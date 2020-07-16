@@ -68,7 +68,7 @@ class BisenetV2(nn.Module):
 
         self.aggregation = BilateralGuidedAggregationBlock(c(128), c(128))
 
-        self.classifier = Classifier(c(128), out_channels)
+        self.classifier = Classifier(c(128), out_channels, expansion=4)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -92,11 +92,13 @@ class BisenetV2(nn.Module):
         return F.interpolate(x, size=input.shape[2:], mode='bilinear', align_corners=True)
 
 
-def Classifier(in_channels, out_channels):
+def Classifier(in_channels, out_channels, expansion=1):
+    mid_channels = expansion * in_channels
+
     return nn.Sequential(
-        ConvBlock(in_channels, in_channels, 3, padding=1),
+        ConvBlock(in_channels, mid_channels, 3, padding=1),
         nn.Dropout(p=0.1),
-        nn.Conv2d(in_channels, out_channels, 1),
+        nn.Conv2d(mid_channels, out_channels, 1),
     )
 
 
