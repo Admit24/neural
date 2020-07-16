@@ -68,10 +68,21 @@ class BisenetV2(nn.Module):
 
         self.aggregation = BilateralGuidedAggregationBlock(c(128), c(128))
 
-        self.classifier = nn.Sequential(
-            ConvBlock(c(128), c(128), 3, padding=1),
-            nn.Conv2d(c(128), out_channels, 1),
-        )
+        self.classifier = Classifier(c(128), out_channels, expansion=4)
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.ones_(m.weight)
+                nn.init.zeros_(m.bias)
+
+        # initialize the last bn so that residual block has no contribution
+        for m in self.modules():
+            if isinstance(m, GatherExpansionBlock):
+                nn.init.zeros_(m.conv3[1].weight)
 
     def forward(self, input):
         detail = self.detail(input)
@@ -79,6 +90,16 @@ class BisenetV2(nn.Module):
         x = self.aggregation(detail, semantic)
         x = self.classifier(x)
         return F.interpolate(x, size=input.shape[2:], mode='bilinear', align_corners=True)
+
+
+def Classifier(in_channels, out_channels, expansion=1):
+    mid_channels = expansion * in_channels
+
+    return nn.Sequential(
+        ConvBlock(in_channels, mid_channels, 3, padding=1),
+        nn.Dropout(p=0.1),
+        nn.Conv2d(mid_channels, out_channels, 1),
+    )
 
 
 class StemBlock(nn.Module):
@@ -94,20 +115,20 @@ class StemBlock(nn.Module):
 
         self.conv1 = ConvBlock(in_channels, out_channels, 3,
                                padding=1, stride=2)
-        self.conv2 = nn.Sequential(
+        self.left = nn.Sequential(
             ConvBlock(out_channels, out_channels // 2, 1),
             ConvBlock(out_channels // 2, out_channels, 3, padding=1, stride=2),
         )
-        self.pool2 = nn.MaxPool2d(kernel_size=3, padding=1, stride=2)
-        self.conv3 = ConvBlock(out_channels * 2, out_channels, 3, padding=1)
+        self.right = nn.MaxPool2d(kernel_size=3, padding=1, stride=2)
+        self.conv2 = ConvBlock(out_channels * 2, out_channels, 3, padding=1)
 
     def forward(self, input):
         x = self.conv1(input)
         x = torch.cat([
-            self.conv2(x),
-            self.pool2(x)
+            self.left(x),
+            self.right(x)
         ], dim=1)
-        return self.conv3(x)
+        return self.conv2(x)
 
 
 class BilateralGuidedAggregationBlock(nn.Module):
@@ -117,21 +138,19 @@ class BilateralGuidedAggregationBlock(nn.Module):
 
         self.detail = nn.ModuleDict({
             'conv': nn.Sequential(
-                DWConvBlock(in_channels, in_channels, 3,
-                            padding=1, use_relu=False),
+                DWConvBlock(in_channels, in_channels, 3, padding=1, use_relu=False),
                 nn.Conv2d(in_channels, in_channels, 1),
             ),
             'pool': nn.Sequential(
                 ConvBlock(in_channels, in_channels, 3,
                           padding=1, stride=2, use_relu=False),
-                nn.AvgPool2d(kernel_size=3, padding=1, stride=2),
+                nn.AvgPool2d(kernel_size=3, padding=1, stride=2, ceil_mode=False),
             ),
         })
 
         self.semantic = nn.ModuleDict({
             'conv': nn.Sequential(
-                DWConvBlock(in_channels, in_channels, 3,
-                            padding=1, use_relu=False),
+                DWConvBlock(in_channels, in_channels, 3, padding=1, use_relu=False),
                 nn.Conv2d(in_channels, in_channels, 1),
                 nn.Sigmoid(),
             ),
@@ -144,8 +163,7 @@ class BilateralGuidedAggregationBlock(nn.Module):
             ),
         })
 
-        self.conv = ConvBlock(in_channels, out_channels, 3,
-                              padding=1, use_relu=False)
+        self.conv = ConvBlock(in_channels, out_channels, 3, padding=1)
 
     def forward(self, detail, semantic):
         left = torch.mul(
@@ -159,7 +177,7 @@ class BilateralGuidedAggregationBlock(nn.Module):
 
         x = torch.add(
             left,
-            F.interpolate(right, scale_factor=4,
+            F.interpolate(right, size=left.shape[2:],
                           mode='bilinear', align_corners=True),
         )
 
@@ -172,21 +190,18 @@ class GatherExpansionBlock(nn.Module):
         super(GatherExpansionBlock, self).__init__()
 
         self.conv1 = ConvBlock(in_channels, in_channels, 3, padding=1)
+        # In the original paper, not relu is applied in the end of the conv2
         self.conv2 = (
             DWConvBlock(
-                in_channels, 6 * in_channels, 3,
-                padding=1, use_relu=False)
+                in_channels, 6 * in_channels, 3, padding=1)
             if stride == 1 else
             nn.Sequential(
                 DWConvBlock(in_channels, 6 * in_channels, 3,
                             padding=1, stride=stride, use_relu=False),
-                DWConvBlock(6 * in_channels, 6 * in_channels, 3,
-                            padding=1, use_relu=False),
+                DWConvBlock(6 * in_channels, 6 * in_channels, 3, padding=1),
             )
         )
-        self.conv3 = ConvBlock(
-            6 * in_channels, out_channels, 1,
-            use_relu=False)
+        self.conv3 = ConvBlock(6 * in_channels, out_channels, 1, use_relu=False)
 
         self.downsample = (
             None
@@ -220,7 +235,10 @@ class ContextEmbeddingBlock(nn.Module):
             nn.BatchNorm2d(in_channels),
             ConvBlock(in_channels, in_channels, 1),
         )
-        self.conv = nn.Conv2d(in_channels, out_channels, 1)
+        # In the original model, the conv is a regular conv2d, not a conv-bn-relu
+        # So, instead, it is:
+        # self.conv = nn.Conv2d(in_channels, out_channels, 1)
+        self.conv = ConvBlock(in_channels, out_channels, 3, padding=1)
 
     def forward(self, input):
         x = self.pool(input)
