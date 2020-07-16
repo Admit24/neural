@@ -74,8 +74,8 @@ class BisenetV2(nn.Module):
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out')
                 if m.bias is not None:
-                    nn.init.constant_(module.bias, 0)
-            elif isinstance(m, nn.BatchNorm):
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.BatchNorm2d):
                 nn.init.ones_(m.weight)
                 nn.init.zeros_(m.bias)
 
