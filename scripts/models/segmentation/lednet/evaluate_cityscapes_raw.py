@@ -1,5 +1,6 @@
 import argparse
 from collections import OrderedDict
+import numpy as np
 
 import torch
 from torch.utils.data import DataLoader
@@ -16,7 +17,10 @@ from neural.data.cityscapes import Cityscapes
 from neural.utils.training import get_datasets_root
 from neural.data.cityscapes import CLASSES, TRAIN_MAPPING
 
+from pytorch_lightning.metrics.functional import confusion_matrix
+
 from pprint import pprint
+from tqdm import tqdm
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--state_dict', type=str, required=True)
@@ -53,23 +57,30 @@ model.load_state_dict(state_dict, strict=True)
 
 model = model.to(device)
 
-evaluator = create_segmentation_evaluator(
-    model,
-    device=device,
-    num_classes=19,
-)
+model.eval()
+torch.set_grad_enabled(False)
 
-ProgressBar().attach(evaluator)
+metrics = []
 
-state = evaluator.run(val_loader)
+for x, y in tqdm(val_loader):
+    x = x.to(device)
+    y = y.to(device)
 
-classes = CLASSES[TRAIN_MAPPING != 255]
+    y_pred = torch.argmax(model(x), 1)
 
+    miou = confusion_matrix(y_pred[y != 255], y[y != 255], num_classes=19)
+    metrics.append(miou)
+
+
+cm = sum(metrics)
+
+iou = cm.diag() / (cm.sum(dim=1) + cm.sum(dim=0) - cm.diag() + 1e-15)
 
 metrics = {
-    'accuracy': state.metrics['accuracy'],
-    'miou': state.metrics['miou'],
-    'iou': {name: state.metrics['iou'][id].item() for id, name in enumerate(classes)},
+    # 'accuracy': state.metrics['accuracy'],
+    'miou': iou.mean(),
+    'iou': iou,
+    # 'iou': {name: state.metrics['iou'][id].item() for id, name in enumerate(classes)},
 }
 
 pprint(metrics)
