@@ -68,7 +68,7 @@ class BisenetV2(nn.Module):
 
         self.aggregation = BilateralGuidedAggregationBlock(c(128), c(128))
 
-        self.classifier = Classifier(c(128), out_channels, expansion=4)
+        self.classifier = Classifier(c(128), out_channels, 1024)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -92,9 +92,7 @@ class BisenetV2(nn.Module):
         return F.interpolate(x, size=input.shape[2:], mode='bilinear', align_corners=True)
 
 
-def Classifier(in_channels, out_channels, expansion=1):
-    mid_channels = expansion * in_channels
-
+def Classifier(in_channels, out_channels, mid_channels):
     return nn.Sequential(
         ConvBlock(in_channels, mid_channels, 3, padding=1),
         nn.Dropout(p=0.1),
@@ -139,7 +137,7 @@ class BilateralGuidedAggregationBlock(nn.Module):
         self.detail = nn.ModuleDict({
             'conv': nn.Sequential(
                 DWConvBlock(in_channels, in_channels, 3, padding=1, use_relu=False),
-                nn.Conv2d(in_channels, in_channels, 1),
+                nn.Conv2d(in_channels, in_channels, 1, bias=False),
             ),
             'pool': nn.Sequential(
                 ConvBlock(in_channels, in_channels, 3,
@@ -151,7 +149,7 @@ class BilateralGuidedAggregationBlock(nn.Module):
         self.semantic = nn.ModuleDict({
             'conv': nn.Sequential(
                 DWConvBlock(in_channels, in_channels, 3, padding=1, use_relu=False),
-                nn.Conv2d(in_channels, in_channels, 1),
+                nn.Conv2d(in_channels, in_channels, 1, bias=False),
                 nn.Sigmoid(),
             ),
             'pool': nn.Sequential(
