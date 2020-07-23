@@ -33,7 +33,7 @@ class EDSR(nn.Module):
         self.features = nn.Sequential(*[
             ResidualBlock(num_channels, num_channels, scaling=resblock_scaling)
             for _ in range(num_res_blocks)
-        ])
+        ] + [nn.Conv2d(num_channels, num_channels, 3, padding=1)])
         if scale_factor in {2, 3}:
             self.upsampling = Upsampling(num_channels, scale_factor)
         elif scale_factor == 4:
