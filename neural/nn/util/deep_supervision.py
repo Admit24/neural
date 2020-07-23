@@ -9,9 +9,9 @@ class DeepSupervision(nn.Module):
     def __init__(self, module, auxiliary_modules):
         super().__init__()
         self.module = module
-        self.layers = [layer for layer, _ in auxiliary_modules]
+        self.layers = [layer for layer, _ in auxiliary_modules.items()]
         self.auxiliary = nn.ModuleList([
-            module for _, module in auxiliary_modules
+            module for _, module in auxiliary_modules.items()
         ])
 
     def forward(self, input):
