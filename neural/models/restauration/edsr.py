@@ -1,7 +1,7 @@
-import torch
 from torch import nn
 from torch.nn import functional as F
 
+from neural.utils.hub import configure_model
 
 __all__ = [
     'EDSR',
@@ -9,11 +9,51 @@ __all__ = [
 ]
 
 
+@configure_model({
+    'div2k_2x': {
+        'in_channels': 3,
+        'out_channels': 3,
+        'scale_factor': 2,
+        'state_dict': 'http://files.deeplar.tk/neural/weights/edsr/edsr_2x-div2k-b109c297.pth',
+    },
+    'div2k_3x': {
+        'in_channels': 3,
+        'out_channels': 3,
+        'scale_factor': 3,
+        'state_dict': 'http://files.deeplar.tk/neural/weights/edsr/edsr_3x-div2k-39a5f2e2.pth',
+    },
+    'div2k_4x': {
+        'in_channels': 3,
+        'out_channels': 3,
+        'scale_factor': 4,
+        'state_dict': 'http://files.deeplar.tk/neural/weights/edsr/edsr_4x-div2k-586f4bfa.pth',
+    },
+})
 def edsr(in_channels, out_channels, scale_factor):
     return EDSR(in_channels, out_channels, scale_factor,
                 num_channels=256, num_res_blocks=32, resblock_scaling=0.1)
 
 
+@configure_model({
+    'div2k_2x': {
+        'in_channels': 3,
+        'out_channels': 3,
+        'scale_factor': 2,
+        'state_dict': 'http://files.deeplar.tk/neural/weights/edsr/edsr_baseline_2x-div2k-f821ffdc.pth',
+    },
+    'div2k_3x': {
+        'in_channels': 3,
+        'out_channels': 3,
+        'scale_factor': 3,
+        'state_dict': 'http://files.deeplar.tk/neural/weights/edsr/edsr_baseline_3x-div2k-c7c2097c.pth',
+    },
+    'div2k_4x': {
+        'in_channels': 3,
+        'out_channels': 3,
+        'scale_factor': 4,
+        'state_dict': 'http://files.deeplar.tk/neural/weights/edsr/edsr_baseline_4x-div2k-275cd61d.pth',
+    },
+})
 def edsr_baseline(in_channels, out_channels, scale_factor):
     return EDSR(in_channels, out_channels, scale_factor,
                 num_channels=64, num_res_blocks=16, resblock_scaling=None)
