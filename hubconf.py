@@ -23,4 +23,7 @@ from neural.models.segmentation.contextnet import (
 from neural.models.segmentation.deeplabv2 import (
     deeplabv2_resnet18, deeplabv2_resnet34, deeplabv2_resnet50, deeplabv2_resnet101)
 
+# restauration models
+from neural.models.restauration.edsr import edsr, edsr_baseline
+
 dependencies = ['torch']
