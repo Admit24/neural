@@ -7,23 +7,21 @@ from torch.nn import functional as F
 __all__ = ['ohem_loss', 'OHEMLoss']
 
 
-def ohem_loss(input, target, ignore_index=-100, thresh_loss=-log(0.7), numel_frac=0.01):
+def ohem_loss(input, target, ignore_index=-100, thresh_loss=-log(0.7), numel_frac=1 / 16):
+    n_min = numel_frac * target[target != ignore_index].numel()
     loss = F.cross_entropy(
         input, target, ignore_index=ignore_index, reduction='none')
-    loss = loss.flatten()
-    n = int(loss.numel() * numel_frac)
+    hard = loss[loss > thresh_loss]
 
-    loss, _ = torch.sort(loss, descending=True)
-
-    if loss[n] > thresh_loss:
-        return loss[loss > thresh_loss].mean()
+    if hard.numel() < n_min:
+        return loss.topk(n_min)[0].mean()
     else:
-        return loss[:n].mean()
+        return torch.mean(hard)
 
 
 class OHEMLoss(_Loss):
 
-    def __init__(self, ignore_index=-100, thresh_loss=-log(0.7), numel_frac=0.01):
+    def __init__(self, ignore_index=-100, thresh_loss=-log(0.7), numel_frac=1/16):
         super().__init__()
         self.ignore_index = ignore_index
         self.thresh_loss = thresh_loss
