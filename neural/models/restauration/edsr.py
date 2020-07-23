@@ -64,11 +64,11 @@ def edsr_baseline(in_channels, out_channels, scale_factor):
         'in_channels': 3,
         'out_channels': 3,
         'scales': [2, 3, 4],
-        'state_dict': 'http://files.deeplar.tk/neural/weights/edsr/mdsr_baseline-div2k-c4070d35.pth',
+        'state_dict': 'http://files.deeplar.tk/neural/weights/edsr/mdsr-div2k-50920243.pth',
     }
 })
-def mdsr_baseline(in_channels, out_channels, scale_factors=[2, 3, 4]):
-    return MDSR(in_channels, out_channels, scale_factors=scale_factors, width=64, num_blocks=16)
+def mdsr(in_channels, out_channels, scale_factors=[2, 3, 4]):
+    return MDSR(in_channels, out_channels, scale_factors=scale_factors, width=64, num_blocks=80)
 
 
 @configure_model({
@@ -76,11 +76,11 @@ def mdsr_baseline(in_channels, out_channels, scale_factors=[2, 3, 4]):
         'in_channels': 3,
         'out_channels': 3,
         'scales': [2, 3, 4],
-        'state_dict': 'http://files.deeplar.tk/neural/weights/edsr/mdsr-div2k-50920243.pth',
+        'state_dict': 'http://files.deeplar.tk/neural/weights/edsr/mdsr_baseline-div2k-c4070d35.pth',
     }
 })
-def mdsr(in_channels, out_channels, scale_factors=[2, 3, 4]):
-    return MDSR(in_channels, out_channels, scale_factors=scale_factors, width=64, num_blocks=80)
+def mdsr_baseline(in_channels, out_channels, scale_factors=[2, 3, 4]):
+    return MDSR(in_channels, out_channels, scale_factors=scale_factors, width=64, num_blocks=16)
 
 
 class EDSR(nn.Module):
