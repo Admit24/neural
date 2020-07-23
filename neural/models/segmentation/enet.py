@@ -108,7 +108,7 @@ class InitialBlock(nn.Module):
             in_channels, out_channels - in_channels,
             kernel_size=3, padding=1, stride=2, with_relu=False)
         self.pool = nn.MaxPool2d(kernel_size=2)
-        self.activation = nn.PReLU()
+        self.activation = nn.PReLU(out_channels)
 
     def forward(self, input):
         left = self.conv(input)
@@ -145,7 +145,7 @@ class RegularBlock(nn.Module):
         self.conv3 = ConvBlock(width, out_channels, 1, with_relu=False)
 
         self.dropout = nn.Dropout2d(p=dropout_p)
-        self.activation = nn.PReLU()
+        self.activation = nn.PReLU(out_channels)
 
     def forward(self, input):
         x = self.conv1(input)
@@ -173,7 +173,7 @@ class DownsamplingBlock(nn.Module):
 
         self.downsample = nn.MaxPool2d(kernel_size=2, return_indices=True)
 
-        self.activation = nn.PReLU()
+        self.activation = nn.PReLU(out_channels)
 
     def forward(self, input):
         x = self.conv1(input)
@@ -213,7 +213,7 @@ class UpsamplingBlock(nn.Module):
             'conv': ConvBlock(in_channels, out_channels, 1, with_relu=False),
         })
 
-        self.activation = nn.PReLU()
+        self.activation = nn.PReLU(out_channels)
 
     def forward(self, input, indices):
         left = self.conv1(input)
@@ -237,7 +237,7 @@ def ConvBlock(in_channels, out_channels, kernel_size,
         nn.BatchNorm2d(out_channels),
     ]
     if with_relu:
-        layers += [nn.PReLU()]
+        layers += [nn.PReLU(out_channels)]
     return nn.Sequential(*layers)
 
 
