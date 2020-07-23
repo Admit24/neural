@@ -4,6 +4,8 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
+from neural.utils.hub import configure_model
+
 __all__ = [
     'BisenetV2',
     'bisenetv2',
@@ -11,6 +13,13 @@ __all__ = [
 ]
 
 
+@configure_model({
+    'cityscapes': {
+        'in_channels': 3,
+        'out_channels': 19,
+        'state_dict': 'http://files.deeplar.tk/neural/weights/bisenetv2/bisenetv2-cityscapes-5bb89dd4.pth',
+    }
+})
 def bisenetv2(in_channels, out_channels):
     return BisenetV2(in_channels, out_channels,
                      width_multiplier=1, depth_multiplier=1)
