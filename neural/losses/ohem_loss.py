@@ -13,7 +13,7 @@ def ohem_loss(y_pred, y, ignore_index=-100, thresh=-log(0.7), num_frac=1/16):
     loss = loss.flatten()
     hard = loss[loss > thresh]
     if hard.numel() < n_min:
-        return loss.topk(n_min)[0]
+        return loss.topk(n_min)[0].mean()
     else:
         return hard.mean()
 
