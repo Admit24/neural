@@ -34,7 +34,7 @@ from neural.utils.training import (
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', type=int, required=True)
 parser.add_argument('--learning_rate', type=float, required=True)
-parser.add_argument('--weight_decay', type=float, default=2e-4)
+parser.add_argument('--weight_decay', type=float, default=1e-4)
 parser.add_argument('--epochs', type=int, required=True)
 parser.add_argument('--crop_size', type=int, default=768)
 parser.add_argument('--state_dict', type=str, required=False)
@@ -55,15 +55,21 @@ crop_size = args.crop_size
 
 
 train_tfms = albu.Compose([
-    albu.RandomScale([0.5, 1.5], interpolation=cv2.INTER_CUBIC),
-    albu.RandomCrop(crop_size, crop_size),
+    albu.RandomScale([0.5, 2], interpolation=cv2.INTER_CUBIC),
+    albu.RandomCrop(512, 1024),
     albu.HorizontalFlip(),
     albu.HueSaturationValue(),
-    albu.Normalize(),
+    albu.Normalize(
+        mean=(0.3257, 0.3690, 0.3223),
+        std=(0.2112, 0.2148, 0.2115),
+    ),
     ToTensor(),
 ])
 val_tfms = albu.Compose([
-    albu.Normalize(),
+    albu.Normalize(
+        mean=(0.3257, 0.3690, 0.3223),
+        std=(0.2112, 0.2148, 0.2115),
+    ),
     ToTensor(),
 ])
 
@@ -110,13 +116,14 @@ def parameters_of(module, type):
                 yield p
 
 
-optimizer = torch.optim.AdamW(
+optimizer = torch.optim.SGD(
     [
-        {'params': parameters_of(model, (nn.Conv2d, nn.ConvTranspose2d, nn.PReLU)),
+        {'params': parameters_of(model, (nn.Conv2d, nn.ConvTranspose2d)),
          'weight_decay': args.weight_decay, },
-        {'params': parameters_of(model, nn.BatchNorm2d), }
+        {'params': parameters_of(model, (nn.BatchNorm2d, nn.PReLU)), }
     ],
     lr=args.learning_rate,
+    momentum=0.9
 )
 
 
