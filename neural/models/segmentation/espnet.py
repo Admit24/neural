@@ -100,19 +100,19 @@ class Encoder(nn.Module):
             return nn.Sequential(*layers)
 
         self.conv1 = ConvBNReLU(in_channels, 16, 3, padding=1, stride=2)
-        if use_pyramids:
-            self.bn1 = BNReLU(16 + in_channels)
+        # if use_pyramids:
+        #    self.bn1 = BNReLU(16 + in_channels)
 
         self.down2 = ESPBlock(in_channels + 16 if use_pyramids else 16, 64, stride=2, use_residual=False)
         self.level2 = make_block(64, alphas[0])
-        if use_pyramids:
-            self.bn2 = BNReLU(128 + in_channels)
+        # if use_pyramids:
+        #     self.bn2 = BNReLU(128 + in_channels)
 
         self.down3 = ESPBlock(in_channels + 128 if use_pyramids else 128 if use_connections else 64,
                               128, stride=2, use_residual=False)
         self.level3 = make_block(128, alphas[1])
-        if use_pyramids:
-            self.bn3 = BNReLU(256)
+        # if use_pyramids:
+        #     self.bn3 = BNReLU(256)
 
     def forward(self, input):
         if self.use_pyramids:
@@ -120,22 +120,22 @@ class Encoder(nn.Module):
             quarter = F.avg_pool2d(half, 3, stride=2, padding=1)
 
         x = self.conv1(input)
-        x = torch.cat([x, half], dim=1) if self.use_pyramids else x
-        x = level1 = self.bn1(x) if self.use_pyramids else x
+        x = level1 = torch.cat([x, half], dim=1) if self.use_pyramids else x
+        # x = level1 = self.bn1(x) if self.use_pyramids else x
 
         x = x0 = self.down2(x)
         x = self.level2(x)
-        x = (
+        x = level2 = (
             torch.cat([x, x0, quarter], dim=1) if self.use_pyramids
             else torch.cat([x, x0], dim=1) if self.use_connections
             else x
         )
-        x = level2 = self.bn2(x) if self.use_pyramids else x
+        # x = level2 = self.bn2(x) if self.use_pyramids else x
 
         x = x0 = self.down3(x)
         x = self.level3(x)
-        x = torch.cat([x0, x], dim=1) if self.use_connections else x
-        x = level3 = self.bn3(x) if self.use_pyramids else x
+        x = level3 = torch.cat([x0, x], dim=1) if self.use_connections else x
+        # x = level3 = self.bn3(x) if self.use_pyramids else x
 
         return (level1, level2, level3) if self.return_pyramid else x
 
@@ -150,16 +150,16 @@ class ESPBlock(nn.Module):
         mid_channels = out_channels // groups
         first_group = out_channels - mid_channels * (groups - 1)
 
-        self.conv = nn.Conv2d(in_channels, mid_channels, 3 if stride == 2 else 1,
-                              padding=1 if stride == 2 else 0,
-                              stride=stride, bias=False)
+        self.conv = ConvBNReLU(in_channels, mid_channels, 3 if stride == 2 else 1,
+                               padding=1 if stride == 2 else 0,
+                               stride=stride)
         self.groups = nn.ModuleList([
             nn.Conv2d(mid_channels, mid_channels if idx != 0 else first_group, 3,
                       padding=dilation, dilation=dilation, bias=False)
             for idx, dilation in enumerate(dilations)
         ])
 
-        self.bn = nn.BatchNorm2d(out_channels, eps=1e-3)
+        self.bn = nn.BatchNorm2d(out_channels)
         self.activation = nn.PReLU(out_channels)
 
     def forward(self, input):
@@ -187,7 +187,7 @@ def hierarchical_fusion(groups):
 def ConvBNReLU(in_channels, out_channels, kernel_size, padding=0, stride=1):
     return nn.Sequential(
         nn.Conv2d(in_channels, out_channels, kernel_size, stride=stride, padding=padding, bias=False),
-        nn.BatchNorm2d(out_channels, eps=1e-3),
+        nn.BatchNorm2d(out_channels),
         nn.PReLU(out_channels),
     )
 
@@ -202,6 +202,6 @@ def DeConvBNReLU(in_channels, out_channels):
 
 def BNReLU(channels):
     return nn.Sequential(
-        nn.BatchNorm2d(channels, eps=1e-3),
+        nn.BatchNorm2d(channels),
         nn.PReLU(channels),
     )
