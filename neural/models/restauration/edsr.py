@@ -1,3 +1,16 @@
+"""EDSR: Enhanced Deep Residual Networks for Single Image Super-Resolution
+
+A model for image super-resolution for 2, 3, and 4x upscaling. 
+
+Based on the work of:
+
+[1] Bee Lim, Sanghyun Son, Heewon Kim, Seungjun Nah, and Kyoung Mu Lee, "Enhanced Deep Residual Networks for Single Image Super-Resolution," 2nd NTIRE: New Trends in Image Restoration and Enhancement workshop and challenge on image super-resolution in conjunction with CVPR 2017.
+
+Alternative implementations:
+- https://github.com/thstkdgus35/EDSR-PyTorch
+
+"""
+
 from torch import nn
 from torch.nn import functional as F
 
@@ -6,6 +19,7 @@ from neural.utils.hub import configure_model
 __all__ = [
     'EDSR',
     'edsr', 'edsr_baseline',
+    'mdsr', 'mdsr_baseline',
 ]
 
 
