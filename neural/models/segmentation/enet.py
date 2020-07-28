@@ -13,7 +13,7 @@ __all__ = ['ENet', 'enet']
     'cityscapes': {
         'in_channels': 3,
         'out_channels': 19,
-        'state_dict': 'http://files.deeplar.tk/neural/weights/enet/enet-cityscapes-50b4bdd2.pth',
+        'state_dict': 'http://files.deeplar.tk/neural/weights/enet/enet-cityscapes-db32303b.pth',
     }
 })
 def enet(in_channels=3, out_channels=19):
