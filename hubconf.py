@@ -20,6 +20,7 @@ from neural.models.segmentation.fastscnn import fastscnn
 from neural.models.segmentation.enet import enet
 from neural.models.segmentation.contextnet import (
     contextnet12, contextnet14, contextnet18)
+from neural.models.segmentation.bisenetv2 import bisenetv2
 from neural.models.segmentation.deeplabv2 import (
     deeplabv2_resnet18, deeplabv2_resnet34, deeplabv2_resnet50, deeplabv2_resnet101)
 
