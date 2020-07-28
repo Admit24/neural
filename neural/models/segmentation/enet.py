@@ -237,7 +237,7 @@ def ConvBlock(in_channels, out_channels, kernel_size,
         nn.BatchNorm2d(out_channels),
     ]
     if with_relu:
-        layers += [nn.PReLU(out_channels)]
+        layers += [nn.PReLU()]
     return nn.Sequential(*layers)
 
 
