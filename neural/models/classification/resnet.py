@@ -90,7 +90,7 @@ class ResNet(nn.Sequential):
                  block_depth, block, expansion=1,
                  width_multiplier=1):
 
-        def c(channels): width_multiplier * channels
+        def c(channels): return width_multiplier * channels
 
         def make_layer(in_channels, out_channels, num_blocks, block, stride=1):
             layers = [block(in_channels, out_channels, stride=stride)]
