@@ -7,7 +7,7 @@ from neural.utils.hub import configure_model
 @configure_model({
     'cityscapes': {
         'in_channels': 3, 'out_channels': 19,
-        'state_dict': 'http://files.deeplar.tk/neural/weights/segnet/segnet-cityscapes-ae73a541.pth',
+        'state_dict': 'http://files.deeplar.tk/neural/weights/segnet/segnet-cityscapes-5418f34b.pth',
     }
 })
 def segnet(in_channels=3, out_channels=19):
