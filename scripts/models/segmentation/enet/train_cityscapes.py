@@ -55,7 +55,7 @@ crop_size = args.crop_size
 
 
 train_tfms = albu.Compose([
-    albu.RandomScale([0.5, 2], interpolation=cv2.INTER_CUBIC),
+    albu.RandomScale([-0.5, 1.], interpolation=cv2.INTER_CUBIC, always_apply=True),
     albu.RandomCrop(512, 1024),
     albu.HorizontalFlip(),
     albu.HueSaturationValue(),
@@ -130,17 +130,17 @@ optimizer = torch.optim.SGD(
 class_freq = torch.from_numpy(Cityscapes.CLASS_FREQ).float()
 weight = 1 / torch.log(1.02 + class_freq)
 loss_fn = torch.nn.CrossEntropyLoss(ignore_index=255, weight=weight)
-# loss_fn = OHEMLoss(ignore_index=255)
 loss_fn = loss_fn.cuda()
 
+warmup_iterations = 1000
 
 scheduler = CosineAnnealingScheduler(
     optimizer, 'lr',
-    args.learning_rate, 1e-6,
-    cycle_size=args.epochs * len(train_loader),
+    args.learning_rate, args.learning_rate*1e-4,
+    cycle_size=args.epochs * len(train_loader) - warmup_iterations,
 )
 scheduler = create_lr_scheduler_with_warmup(
-    scheduler, 0, args.learning_rate, 1000)
+    scheduler, 0, args.learning_rate, warmup_iterations)
 
 
 model, optimizer = amp.initialize(model, optimizer, opt_level="O2")

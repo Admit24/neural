@@ -1,4 +1,5 @@
 
+import cv2
 import argparse
 import os
 
@@ -31,7 +32,7 @@ from neural.utils.training import (
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', type=int, required=True)
 parser.add_argument('--learning_rate', type=float, required=True)
-parser.add_argument('--weight_decay', type=float, default=1e-5)
+parser.add_argument('--weight_decay', type=float, default=4e-5)
 parser.add_argument('--epochs', type=int, required=True)
 parser.add_argument('--crop_size', type=int, default=768)
 parser.add_argument('--state_dict', type=str, required=False)
@@ -49,9 +50,10 @@ device = torch.device('cuda')
 
 crop_size = args.crop_size
 
+
 train_tfms = albu.Compose([
-    albu.RandomScale([0.5, 2.0]),
-    albu.RandomCrop(crop_size, crop_size),
+    albu.RandomScale([-0.5, 1.0], interpolation=cv2.INTER_CUBIC, always_apply=True),
+    albu.RandomCrop(512, 1024),
     albu.HorizontalFlip(),
     albu.HueSaturationValue(),
     albu.Normalize(),
@@ -100,19 +102,22 @@ if args.state_dict is not None:
 model = model.to(device)
 
 optimizer = torch.optim.AdamW(
-    model.parameters(),
+    [
+        {'params': (p for p in model.parameters() if len(p.shape) != 1),
+         'weight_decay': args.weight_decay, },
+        {'params': (p for p in model.parameters() if len(p.shape) == 1), },
+    ],
     lr=args.learning_rate,
-    weight_decay=args.weight_decay,
 )
 
-loss_fn = OHEMLoss(ignore_index=255, numel_frac=0.05)
+loss_fn = OHEMLoss(ignore_index=255)
 loss_fn = loss_fn.cuda()
 
 
 scheduler = CosineAnnealingScheduler(
     optimizer, 'lr',
     args.learning_rate, args.learning_rate / 1000,
-    args.epochs * len(train_loader),
+    args.epochs * len(train_loader) - 1000,
 )
 scheduler = create_lr_scheduler_with_warmup(
     scheduler, 0, args.learning_rate, 1000)
@@ -140,17 +145,17 @@ evaluator = create_segmentation_evaluator(
 
 if local_rank == 0:
     ProgressBar(persist=True).attach(trainer, ['loss'])
-    ProgressBar(persist=True).attach(evaluator, ['miou', 'accuracy'])
+    ProgressBar(persist=True).attach(evaluator)
 
 
-@trainer.on(Events.EPOCH_COMPLETED)
+@trainer.on(Events.EPOCH_COMPLETED(every=5))
 def evaluate(engine):
     evaluator.run(val_loader)
 
 
 if local_rank == 0:
     checkpointer = ModelCheckpoint(
-        dirname=os.path.join('checkpoints', 'weights'),
+        dirname=os.path.join('checkpoints', 'contextnet14'),
         filename_prefix='contextnet',
         score_name='miou',
         score_function=lambda engine: engine.state.metrics['miou'],

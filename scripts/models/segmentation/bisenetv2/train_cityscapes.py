@@ -129,7 +129,7 @@ train_tfms = albu.Compose([
     albu.RandomScale([0.75, 2], interpolation=cv2.INTER_CUBIC, always_apply=True),
     albu.RandomCrop(1024, 512),
     albu.HorizontalFlip(),
-    #albu.HueSaturationValue(),
+    # albu.HueSaturationValue(),
     albu.Normalize(),
     ToTensor(),
 ])
@@ -176,7 +176,6 @@ model = DeepSupervision(model, {
     model.semantic.stage3: Classifier(32, 19, 128),
     model.semantic.stage4: Classifier(64, 19, 128),
     model.semantic.stage5[-2]: Classifier(128, 19, 128),
-    model.semantic.stage5: Classifier(128, 19, 128),
 })
 
 model = model.to(device)

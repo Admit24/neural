@@ -1,5 +1,4 @@
 import argparse
-from collections import OrderedDict
 
 import torch
 from torch.utils.data import DataLoader
@@ -9,7 +8,6 @@ from albumentations.pytorch import ToTensorV2 as ToTensor
 
 from ignite.contrib.handlers import ProgressBar
 
-from neural.models.segmentation.contextnet import ContextNet
 from neural.engines.segmentation import create_segmentation_evaluator
 from neural.data.cityscapes import Cityscapes
 
@@ -19,27 +17,28 @@ from neural.data.cityscapes import CLASSES, TRAIN_MAPPING
 from pprint import pprint
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--model', type=str, default='contextnet14', 
-                    choices=['contextnet12', 'contextnet14', 'contextnet18'])
-parser.add_argument('--state_dict', type=str, required=True)
-parser.add_argument('--width_multiplier', required=False, type=int, default=1)
+parser.add_argument('--model', type=str)
+parser.add_argument('--state_dict', type=str, required=False)
 args = parser.parse_args()
 
 
-#Define device
+# Define device
 device = torch.device('cuda')
 
-#Define transformations to Validation set
+# Define transformations to Validation set
 val_tfms = albu.Compose([
-    albu.Normalize(),
+    albu.Normalize(
+        mean=[0.28689553, 0.32513301, 0.28389176],
+        std=[0.17613641, 0.18099167, 0.17772231],
+    ),
     ToTensor(),
 ])
-#Get Validation set of cityscapes
+# Get Validation set of cityscapes
 dataset_dir = get_datasets_root('cityscapes')
 val_dataset = Cityscapes(dataset_dir, split='val', transforms=val_tfms)
 
 
-#Load dataset
+# Load dataset
 val_loader = DataLoader(
     val_dataset,
     batch_size=1,
@@ -47,17 +46,18 @@ val_loader = DataLoader(
     drop_last=False,
     num_workers=8,
 )
-### Create model
+# Create model
+kwargs = (
+    dict(config='cityscapes')
+    if args.state_dict is None
+    else dict(in_channels=3, out_channels=19))
 
-scale_factor = (
-    4 if args.model == 'contextnet14' 
-    else 2 if args.model == 'contextnet12' 
-    else 8)
-model = ContextNet(3, 19, scale_factor=scale_factor, width_multiplier=args.width_multiplier)
+model = torch.hub.load('bernardomig/neural', args.model, force_reload=True, **kwargs)
 
-### Load model
-state_dict = torch.load(args.state_dict, map_location='cpu')
-model.load_state_dict(state_dict, strict=True)
+# Load model
+if args.state_dict is not None:
+    state_dict = torch.load(args.state_dict, map_location='cpu')
+    model.load_state_dict(state_dict, strict=True)
 
 model = model.to(device)
 
@@ -77,7 +77,7 @@ classes = CLASSES[TRAIN_MAPPING != 255]
 metrics = {
     'accuracy': state.metrics['accuracy'],
     'miou': state.metrics['miou'],
-    'iou': {name: state.metrics['iou'][id].item() for id, name in enumerate(classes) },
+    'iou': {name: state.metrics['iou'][id].item() for id, name in enumerate(classes)},
 }
 
 pprint(metrics)

@@ -1,4 +1,5 @@
 
+import cv2
 import argparse
 import os
 from logging import info
@@ -15,19 +16,20 @@ from apex.parallel import (
 from ignite.engine import Events
 from ignite.handlers import ModelCheckpoint, global_step_from_engine
 from ignite.contrib.handlers import (
-    create_lr_scheduler_with_warmup, CosineAnnealingScheduler, LRScheduler)
+    create_lr_scheduler_with_warmup, CosineAnnealingScheduler, LRScheduler, )
 from ignite.contrib.handlers import ProgressBar
 
 import albumentations as albu
 from albumentations.pytorch import ToTensorV2 as ToTensor
 
-from neural.models.segmentation.fasterscnn import fastscnn, Classifier
+from neural.models.segmentation.fastscnn import fastscnn, Classifier
 from neural.engines.segmentation import (
     create_segmentation_trainer, create_segmentation_evaluator)
-from neural.data.cityscapes import Cityscapes
+from neural.data.cityscapes import Cityscapes, MEAN, STD
 from neural.nn.util import DeepSupervision
 
 from neural.losses import OHEMLoss
+from neural.optim.lr_scheduler import PolyLR
 
 from neural.utils.training import (
     setup_distributed, get_datasets_root, create_sampler)
@@ -53,15 +55,21 @@ device = torch.device('cuda')
 crop_size = args.crop_size
 
 train_tfms = albu.Compose([
-    albu.RandomScale([0.5, 2.0]),
-    albu.RandomCrop(crop_size, crop_size),
+    albu.RandomScale([-0.5, 1.0], interpolation=cv2.INTER_CUBIC, always_apply=True),
+    albu.RandomCrop(512, 1024),
     albu.HorizontalFlip(),
     albu.HueSaturationValue(),
-    albu.Normalize(),
+    albu.Normalize(
+        mean=MEAN,
+        std=STD,
+    ),
     ToTensor(),
 ])
 val_tfms = albu.Compose([
-    albu.Normalize(),
+    albu.Normalize(
+        mean=MEAN,
+        std=STD,
+    ),
     ToTensor(),
 ])
 
@@ -92,21 +100,21 @@ val_loader = DataLoader(
 )
 
 model = fastscnn(3, 19)
-model = DeepSupervision(model, [
-    (model.downsample, nn.Sequential(
+model = DeepSupervision(model, {
+    model.downsample: nn.Sequential(
         Classifier(64, 19),
         nn.Upsample(scale_factor=8, mode='bilinear', align_corners=True),
-    )),
-    (model.features, nn.Sequential(
+    ),
+    model.features: nn.Sequential(
         Classifier(128, 19),
         nn.Upsample(scale_factor=32, mode='bilinear', align_corners=True),
-    )),
-])
+    ),
+})
 
 
 if args.state_dict is not None:
     state_dict = torch.load(args.state_dict, map_location='cpu')
-    model.load_state_dict(state_dict['model'], strict=True)
+    model.module.load_state_dict(state_dict, strict=True)
 
 
 model = model.to(device)
@@ -117,38 +125,39 @@ bn_params = []
 for m in model.modules():
     if isinstance(m, nn.Conv2d) and m.groups == 1:
         weight_params += list(m.parameters())
-    elif isinstance(m, nn.Conv2d) or isinstance(m, nn.BatchNorm2d):
+    elif isinstance(m, (nn.Conv2d, nn.BatchNorm2d)):
         bn_params += list(m.parameters())
 
+num_total_parameters = sum((p.numel() for p in model.parameters()))
+num_bn_params = sum((p.numel() for p in bn_params))
+num_weight_params = sum((p.numel() for p in weight_params))
+assert (num_total_parameters == num_bn_params + num_weight_params), \
+    f"{num_total_parameters} != {num_bn_params} + {num_weight_params} ({num_bn_params + num_weight_params})"
 
 optimizer = torch.optim.SGD([
     {'params': weight_params, 'weight_decay': args.weight_decay},
     {'params': bn_params}],
     lr=args.learning_rate,
-    momentum=0.9,
+    momentum=0.85,
+    nesterov=True,
 )
 
-ohem_fn = OHEMLoss(ignore_index=255, numel_frac=0.05).cuda()
-ce_fn = nn.CrossEntropyLoss(ignore_index=255)
+ohem_fn = OHEMLoss(ignore_index=255).cuda()
 
 
 def supervised_loss_fn(y_pred, y):
     y_pred, aux_y_pred = y_pred
     return \
         ohem_fn(y_pred, y) \
-        + 0.4 * sum((ce_fn(y_pred, y) for y_pred in aux_y_pred))
+        + sum((ohem_fn(y_pred, y) for y_pred in aux_y_pred))
 
 
-scheduler = CosineAnnealingScheduler(
-    optimizer, 'lr',
-    args.learning_rate, args.learning_rate / 1000,
-    args.epochs * len(train_loader),
+scheduler = torch.optim.lr_scheduler.OneCycleLR(
+    optimizer, max_lr=args.learning_rate,
+    total_steps=args.epochs * len(train_loader),
 )
-scheduler = create_lr_scheduler_with_warmup(
-    scheduler, 0, args.learning_rate, 1000)
 
-
-model, optimizer = amp.initialize(model, optimizer, opt_level="O2")
+model, optimizer = amp.initialize(model, optimizer, opt_level="O1")
 if args.distributed:
     model = convert_syncbn_model(model)
     model = DistributedDataParallel(model)
@@ -159,7 +168,11 @@ trainer = create_segmentation_trainer(
     device=device,
     use_f16=True,
 )
-trainer.add_event_handler(Events.ITERATION_COMPLETED, scheduler)
+
+
+@trainer.on(Events.ITERATION_COMPLETED)
+def update_scheduler(engine):
+    scheduler.step()
 
 
 evaluator = create_segmentation_evaluator(
@@ -173,23 +186,24 @@ if local_rank == 0:
     ProgressBar(persist=True).attach(evaluator)
 
 
-@trainer.on(Events.EPOCH_COMPLETED)
+@trainer.on(Events.EPOCH_COMPLETED(every=5))
 def evaluate(engine):
     evaluator.run(val_loader)
 
 
-@evaluator.on(Events.COMPLETED)
-def log_results(engine):
-    epoch = trainer.state.epoch
-    metrics = engine.state.metrics
-    miou, accuracy = metrics['miou'], metrics['accuracy']
+if local_rank == 0:
+    @evaluator.on(Events.COMPLETED)
+    def log_results(engine):
+        epoch = trainer.state.epoch
+        metrics = engine.state.metrics
+        miou, accuracy = metrics['miou'], metrics['accuracy']
 
-    print(f'Epoch [{epoch}]: miou={miou}, accuracy={accuracy}')
+        print(f'Epoch [{epoch}]: miou={miou}, accuracy={accuracy}')
 
 
 if local_rank == 0:
     checkpointer = ModelCheckpoint(
-        dirname=os.path.join('fastscnn-weights'),
+        dirname=os.path.join('checkpoints', 'fastscnn-weights'),
         filename_prefix='fastscnn',
         score_name='miou',
         score_function=lambda engine: engine.state.metrics['miou'],
@@ -199,8 +213,7 @@ if local_rank == 0:
     evaluator.add_event_handler(
         Events.COMPLETED, checkpointer,
         to_save={
-            'model': model if not args.distributed else model.module,
-            'wrapped': model.module if not args.distributed else model.module.module,
+            'wrapped': model if not args.distributed else model.module,
         },
     )
 

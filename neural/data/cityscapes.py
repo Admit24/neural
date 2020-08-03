@@ -1,6 +1,5 @@
 import os
 import cv2
-import numpy as np
 import torch
 from numpy import array
 
@@ -23,6 +22,8 @@ CLASS_FREQ = array([
     0.0116, 0.0402, 0.0122, 0.0014, 0.0699, 0.0027, 0.0024, 0.0023, 0.0010,
     0.0041,
 ])
+MEAN = array([0.28689553, 0.32513301, 0.28389176])
+STD = array([0.17613641, 0.18099167, 0.17772231])
 
 
 class Cityscapes(Dataset):
@@ -31,7 +32,7 @@ class Cityscapes(Dataset):
     CLASS_FREQ = CLASS_FREQ
 
     def __init__(self, root_dir, split='train', transforms=None):
-        if split in {'train', 'val'}:
+        if split in {'train', 'val', 'test'}:
             images_dir = os.path.join(root_dir, 'leftImg8bit', split)
             labels_dir = os.path.join(root_dir, 'gtFine', split)
 
@@ -83,9 +84,10 @@ class Cityscapes(Dataset):
 
         label = cv2.imread(label, cv2.IMREAD_GRAYSCALE)
         label = TRAIN_MAPPING[label]
+        label = label.astype('int64')
 
         if self.transforms is not None:
             o = self.transforms(image=image, mask=label)
             return o['image'], o['mask'].long()
         else:
-            return torch.from_numpy(image), torch.from_numpy(label).long()
+            return torch.from_numpy(image), torch.from_numpy(label)

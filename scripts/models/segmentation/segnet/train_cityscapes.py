@@ -1,12 +1,11 @@
 
+import cv2
 import argparse
 import os
-from logging import info
 
 import torch
 from torch import nn
-from torch import distributed as dist
-from torch.utils.data import DataLoader, DistributedSampler
+from torch.utils.data import DataLoader
 
 from apex import amp
 from apex.parallel import (
@@ -15,7 +14,7 @@ from apex.parallel import (
 from ignite.engine import Events
 from ignite.handlers import ModelCheckpoint, global_step_from_engine
 from ignite.contrib.handlers import (
-    create_lr_scheduler_with_warmup, CosineAnnealingScheduler, LRScheduler)
+    create_lr_scheduler_with_warmup, CosineAnnealingScheduler)
 from ignite.contrib.handlers import ProgressBar
 
 import albumentations as albu
@@ -25,7 +24,6 @@ from neural.models.segmentation.segnet import segnet
 from neural.engines.segmentation import (
     create_segmentation_trainer, create_segmentation_evaluator)
 from neural.data.cityscapes import Cityscapes
-from neural.nn.util import DeepSupervision
 
 from neural.losses import OHEMLoss
 
@@ -53,16 +51,23 @@ device = torch.device('cuda')
 
 crop_size = args.crop_size
 
+
 train_tfms = albu.Compose([
-    albu.RandomScale([0.5, 2.0]),
+    albu.RandomScale([-0.5, 1.0], interpolation=cv2.INTER_CUBIC,  always_apply=True),
     albu.RandomCrop(crop_size, crop_size),
     albu.HorizontalFlip(),
     albu.HueSaturationValue(),
-    albu.Normalize(),
+    albu.Normalize(
+        mean=(0.3257, 0.3690, 0.3223),
+        std=(0.2112, 0.2148, 0.2115),
+    ),
     ToTensor(),
 ])
 val_tfms = albu.Compose([
-    albu.Normalize(),
+    albu.Normalize(
+        mean=(0.3257, 0.3690, 0.3223),
+        std=(0.2112, 0.2148, 0.2115),
+    ),
     ToTensor(),
 ])
 
@@ -133,15 +138,22 @@ optimizer = torch.optim.SGD([
     momentum=0.9,
 )
 
-loss_fn = OHEMLoss(ignore_index=255, numel_frac=0.05).cuda()
+loss_fn = OHEMLoss(ignore_index=255).cuda()
 
-scheduler = CosineAnnealingScheduler(
-    optimizer, 'lr',
-    args.learning_rate, args.learning_rate / 1000,
-    args.epochs * len(train_loader),
-)
-scheduler = create_lr_scheduler_with_warmup(
-    scheduler, 0, args.learning_rate, 1000)
+lr = args.learning_rate
+lrs = [lr / 10, lr/10, lr, lr]
+
+schedulers = [
+    CosineAnnealingScheduler(
+        optimizer, 'lr',
+        lr, lr * 1e-4,
+        args.epochs * len(train_loader),
+        param_group_index=0)
+    for index, lr in enumerate(lrs)]
+schedulers = [
+    create_lr_scheduler_with_warmup(scheduler, 0, lr, 1000)
+    for scheduler, lr in zip(schedulers, lrs)
+]
 
 
 model, optimizer = amp.initialize(model, optimizer, opt_level="O2")
@@ -155,7 +167,9 @@ trainer = create_segmentation_trainer(
     device=device,
     use_f16=True,
 )
-trainer.add_event_handler(Events.ITERATION_COMPLETED, scheduler)
+
+for scheduler in schedulers:
+    trainer.add_event_handler(Events.ITERATION_COMPLETED, scheduler)
 
 
 evaluator = create_segmentation_evaluator(
