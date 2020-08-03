@@ -5,24 +5,24 @@ from torch import nn
 from torch.nn import functional as F
 
 
-def espnet(in_channels, out_channels, alphas=[5, 3]):
+def espnet(in_channels, out_channels, alphas=[2, 3]):
     return ESPNet(in_channels, out_channels, alphas=alphas)
 
 
-def espnet_a(in_channels, out_channels, alphas=[5, 3]):
+def espnet_a(in_channels, out_channels, alphas=[2, 3]):
     return ESPNet_ABC(in_channels, out_channels, alphas=alphas, use_pyramids=False, use_connections=False)
 
 
-def espnet_b(in_channels, out_channels, alphas=[5, 3]):
+def espnet_b(in_channels, out_channels, alphas=[2, 3]):
     return ESPNet_ABC(in_channels, out_channels, alphas=alphas, use_pyramids=False, use_connections=True)
 
 
-def espnet_c(in_channels, out_channels, alphas=[5, 3]):
+def espnet_c(in_channels, out_channels, alphas=[2, 3]):
     return ESPNet_ABC(in_channels, out_channels, alphas=alphas, use_pyramids=True, use_connections=True)
 
 
 class ESPNet(nn.Module):
-    def __init__(self, in_channels, out_channels, alphas=[5, 3], use_pyramids=True, use_connections=True):
+    def __init__(self, in_channels, out_channels, alphas=[2, 3], use_pyramids=True, use_connections=True):
         super().__init__()
 
         self.encoder = Encoder(in_channels, alphas=alphas,
@@ -42,7 +42,7 @@ class ESPNet(nn.Module):
 
 
 class ESPNet_ABC(nn.Module):
-    def __init__(self, in_channels, out_channels, alphas=[5, 3], use_pyramids=True, use_connections=True):
+    def __init__(self, in_channels, out_channels, alphas=[2, 3], use_pyramids=True, use_connections=True):
         super().__init__()
 
         self.encoder = Encoder(in_channels, alphas=alphas,
@@ -86,7 +86,7 @@ class Decoder(nn.Module):
 
 
 class Encoder(nn.Module):
-    def __init__(self, in_channels, alphas=[5, 3], use_pyramids=True, use_connections=True, return_pyramid=True):
+    def __init__(self, in_channels, alphas=[2, 3], use_pyramids=True, use_connections=True, return_pyramid=True):
         super().__init__()
 
         self.use_pyramids = use_pyramids
